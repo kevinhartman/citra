@@ -204,7 +204,8 @@ void RendererOpenGL::InitFramebuffer() {
 }
 
 void RendererOpenGL::RenderFramebuffer() {
-    glViewport(0, 0, resolution_width, resolution_height);
+    UpdateViewportExtent();
+    glViewport(viewport_extent.x, viewport_extent.y, viewport_extent.width, viewport_extent.height);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(program_id);
@@ -254,6 +255,43 @@ void RendererOpenGL::UpdateFramerate() {
  */
 void RendererOpenGL::SetWindow(EmuWindow* window) {
     render_window = window;
+}
+
+// TODO: This should happen on window resize callback from EmuWindow.
+//       It should be done when EmuWindow is refactored.
+void RendererOpenGL::UpdateViewportExtent() {
+    int width_in_pixels;
+    int height_in_pixels;
+
+    render_window->GetFramebufferSize(&width_in_pixels, &height_in_pixels);
+
+    // No update needed if framebuffer size hasn't changed
+    if (width_in_pixels == framebuffer_size.width && height_in_pixels == framebuffer_size.height) {
+        return;
+    }
+
+    // Letterbox the emulation content into the window
+    framebuffer_size.width = width_in_pixels;
+    framebuffer_size.height = height_in_pixels;
+
+    float windowRatio = static_cast<float>(height_in_pixels) / width_in_pixels;
+    float emulationRatio = static_cast<float>(resolution_height) / resolution_width;
+
+    // If the window is more narrow than the emulation content, borders are applied on the
+    // top and bottom of the window
+    if (windowRatio > emulationRatio) {
+        viewport_extent.width = width_in_pixels;
+        viewport_extent.height = emulationRatio * viewport_extent.width;
+        viewport_extent.x = 0;
+        viewport_extent.y = (height_in_pixels - viewport_extent.height) / 2;
+
+    // Otherwise, borders are applied on the left and right sides of the window
+    } else {
+        viewport_extent.height  = height_in_pixels;
+        viewport_extent.width   = (1 / emulationRatio) * viewport_extent.height;
+        viewport_extent.x = (width_in_pixels - viewport_extent.width) / 2;
+        viewport_extent.y = 0;
+    }
 }
 
 /// Initialize the renderer

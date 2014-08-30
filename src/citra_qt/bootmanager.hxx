@@ -96,6 +96,7 @@ public:
     void MakeCurrent();
     void DoneCurrent();
     void PollEvents();
+    void GetFramebufferSize(int* fbWidth, int* fbHeight);
 
     void BackupGeometry();
     void RestoreGeometry();

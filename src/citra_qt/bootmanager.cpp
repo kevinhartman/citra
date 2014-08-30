@@ -206,6 +206,24 @@ void GRenderWindow::PollEvents() {
     */
 }
 
+// On Qt 5.1+, this correctly gets the size of the framebuffer (pixels).
+//
+// Older versions get the window size (density independent pixels),
+// and hence, do not support DPI scaling ("retina" displays).
+// The result will be a viewport that is smaller than the extent of the window.
+void GRenderWindow::GetFramebufferSize(int* fbWidth, int* fbHeight)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+    int pixelRatio = child->QPaintDevice::devicePixelRatio();
+    
+    *fbWidth = child->QPaintDevice::width() * pixelRatio;
+    *fbHeight = child->QPaintDevice::height() * pixelRatio;
+#else
+    *fbWidth = child->QPaintDevice::width();
+    *fbHeight = child->QPaintDevice::height();
+#endif
+}
+
 void GRenderWindow::BackupGeometry()
 {
     geometry = ((QGLWidget*)this)->saveGeometry();

@@ -25,6 +25,9 @@ public:
     /// Releases (dunno if this is the "right" word) the GLFW context from the caller thread
     void DoneCurrent();
 
+    /// Gets the size of the window in pixels
+    void GetFramebufferSize(int* fbWidth, int* fbHeight);
+
     static void OnKeyEvent(GLFWwindow* win, int key, int scancode, int action, int mods);
 
 private:

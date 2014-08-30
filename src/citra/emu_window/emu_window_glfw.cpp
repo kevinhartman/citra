@@ -62,6 +62,10 @@ void OnMouseLocationUpdate(GLFWwindow* win, double x_position, double y_position
 
 }
 
+void EmuWindow_GLFW::GetFramebufferSize(int* fbWidth, int* fbHeight) {
+    glfwGetFramebufferSize(m_render_window, fbWidth, fbHeight);
+}
+
 /// EmuWindow_GLFW constructor
 EmuWindow_GLFW::EmuWindow_GLFW() {
 
@@ -100,6 +104,7 @@ EmuWindow_GLFW::EmuWindow_GLFW() {
     glfwSetWindowUserPointer(m_render_window, this);
     glfwSetKeyCallback(m_render_window, OnKeyEvent);
     glfwSetCursorPosCallback(m_render_window, OnMouseLocationUpdate);
+
 
     DoneCurrent();
 }
