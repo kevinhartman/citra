@@ -32,6 +32,9 @@ public:
     /// Releases (dunno if this is the "right" word) the GLFW context from the caller thread
     virtual void DoneCurrent() = 0;
 
+    /// Gets the size of the window in pixels
+    virtual void GetFramebufferSize(int* fbWidth, int* fbHeight) = 0;
+
     Config GetConfig() const { 
         return m_config;
     }

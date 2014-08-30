@@ -17,13 +17,16 @@ public:
     void SwapBuffers();
 
 	/// Polls window events
-	void PollEvents();
+    void PollEvents();
 
     /// Makes the graphics context current for the caller thread
     void MakeCurrent();
     
     /// Releases (dunno if this is the "right" word) the GLFW context from the caller thread
     void DoneCurrent();
+
+    /// Gets the size of the window in pixels
+    void GetFramebufferSize(int* fbWidth, int* fbHeight);
 
 	GLFWwindow* m_render_window;    ///< Internal GLFW render window
 

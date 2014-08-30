@@ -52,6 +52,9 @@ private:
     /// Updates the framerate
     void UpdateFramerate();
 
+    /// Updates the viewport rectangle
+    void UpdateViewportExtent();
+
     /// Structure used for storing information for rendering each 3DS screen
     struct ScreenInfo {
         // Properties
@@ -80,6 +83,18 @@ private:
 
     int resolution_width;                         ///< Current resolution width
     int resolution_height;                        ///< Current resolution height
+
+    struct {
+        int width;
+        int height;
+    } framebuffer_size;                           ///< Current framebuffer size
+
+    struct {
+        int x;
+        int y;
+        int width;
+        int height;
+    } viewport_extent;                            ///< Current viewport rectangle
 
     // OpenGL global object IDs
     GLuint vertex_array_id;
