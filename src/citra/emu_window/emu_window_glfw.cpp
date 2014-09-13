@@ -8,23 +8,23 @@
 
 #include "citra/emu_window/emu_window_glfw.h"
 
-static const std::pair<int, HID_User::PadState> default_key_map[] = {
-    { GLFW_KEY_A, HID_User::PAD_A },
-    { GLFW_KEY_B, HID_User::PAD_B },
-    { GLFW_KEY_BACKSLASH, HID_User::PAD_SELECT },
-    { GLFW_KEY_ENTER, HID_User::PAD_START },
-    { GLFW_KEY_RIGHT, HID_User::PAD_RIGHT },
-    { GLFW_KEY_LEFT, HID_User::PAD_LEFT },
-    { GLFW_KEY_UP, HID_User::PAD_UP },
-    { GLFW_KEY_DOWN, HID_User::PAD_DOWN },
-    { GLFW_KEY_R, HID_User::PAD_R },
-    { GLFW_KEY_L, HID_User::PAD_L },
-    { GLFW_KEY_X, HID_User::PAD_X },
-    { GLFW_KEY_Y, HID_User::PAD_Y },
-    { GLFW_KEY_H, HID_User::PAD_CIRCLE_RIGHT },
-    { GLFW_KEY_F, HID_User::PAD_CIRCLE_LEFT },
-    { GLFW_KEY_T, HID_User::PAD_CIRCLE_UP },
-    { GLFW_KEY_G, HID_User::PAD_CIRCLE_DOWN },
+static const std::pair<int, HID::Pad::PadState> default_key_map[] = {
+    { GLFW_KEY_A, HID::Pad::PAD_A },
+    { GLFW_KEY_B, HID::Pad::PAD_B },
+    { GLFW_KEY_BACKSLASH, HID::Pad::PAD_SELECT },
+    { GLFW_KEY_ENTER, HID::Pad::PAD_START },
+    { GLFW_KEY_RIGHT, HID::Pad::PAD_RIGHT },
+    { GLFW_KEY_LEFT, HID::Pad::PAD_LEFT },
+    { GLFW_KEY_UP, HID::Pad::PAD_UP },
+    { GLFW_KEY_DOWN, HID::Pad::PAD_DOWN },
+    { GLFW_KEY_R, HID::Pad::PAD_R },
+    { GLFW_KEY_L, HID::Pad::PAD_L },
+    { GLFW_KEY_X, HID::Pad::PAD_X },
+    { GLFW_KEY_Y, HID::Pad::PAD_Y },
+    { GLFW_KEY_H, HID::Pad::PAD_CIRCLE_RIGHT },
+    { GLFW_KEY_F, HID::Pad::PAD_CIRCLE_LEFT },
+    { GLFW_KEY_T, HID::Pad::PAD_CIRCLE_UP },
+    { GLFW_KEY_G, HID::Pad::PAD_CIRCLE_DOWN },
 };
 
 /// Called by GLFW when a key event occurs
@@ -37,13 +37,15 @@ void EmuWindow_GLFW::OnKeyEvent(GLFWwindow* win, int key, int scancode, int acti
     int keyboard_id = ((EmuWindow_GLFW*)VideoCore::g_emu_window)->keyboard_id;
 
     if (action == GLFW_PRESS) {
-        EmuWindow::KeyPressed({key, keyboard_id});
+        HID::Pad::PadState mapped_key = KeyMap::GetPadKey({key, keyboard_id});
+        HID::Pad::PadButtonPress(mapped_key);
     }
 
     if (action == GLFW_RELEASE) {
-        EmuWindow::KeyReleased({key, keyboard_id});
+        HID::Pad::PadState mapped_key = KeyMap::GetPadKey({key, keyboard_id});
+        HID::Pad::PadButtonRelease(mapped_key);
     }
-    HID_User::PadUpdateComplete();
+    HID::Pad::PadUpdateComplete();
 }
 
 /// EmuWindow_GLFW constructor

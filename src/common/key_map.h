@@ -35,11 +35,11 @@ int NewDeviceId();
 /**
  * Maps a device-specific key to a PadState.
  */
-void SetKeyMapping(HostDeviceKey key, HID_User::PadState padState);
+void SetKeyMapping(HostDeviceKey key, HID::Pad::PadState padState);
 
 /**
  * Gets the PadState that's mapped to the provided device-specific key.
  */
-HID_User::PadState GetPadKey(HostDeviceKey key);
+HID::Pad::PadState GetPadKey(HostDeviceKey key);
 
 }

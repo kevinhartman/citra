@@ -109,23 +109,23 @@ EmuThread& GRenderWindow::GetEmuThread()
     return emu_thread;
 }
 
-static const std::pair<int, HID_User::PadState> default_key_map[] = {
-    { Qt::Key_A, HID_User::PAD_A },
-    { Qt::Key_B, HID_User::PAD_B },
-    { Qt::Key_Backslash, HID_User::PAD_SELECT },
-    { Qt::Key_Enter, HID_User::PAD_START },
-    { Qt::Key_Right, HID_User::PAD_RIGHT },
-    { Qt::Key_Left, HID_User::PAD_LEFT },
-    { Qt::Key_Up, HID_User::PAD_UP },
-    { Qt::Key_Down, HID_User::PAD_DOWN },
-    { Qt::Key_R, HID_User::PAD_R },
-    { Qt::Key_L, HID_User::PAD_L },
-    { Qt::Key_X, HID_User::PAD_X },
-    { Qt::Key_Y, HID_User::PAD_Y },
-    { Qt::Key_H, HID_User::PAD_CIRCLE_RIGHT },
-    { Qt::Key_F, HID_User::PAD_CIRCLE_LEFT },
-    { Qt::Key_T, HID_User::PAD_CIRCLE_UP },
-    { Qt::Key_G, HID_User::PAD_CIRCLE_DOWN },
+static const std::pair<int, HID::Pad::PadState> default_key_map[] = {
+    { Qt::Key_A, HID::Pad::PAD_A },
+    { Qt::Key_B, HID::Pad::PAD_B },
+    { Qt::Key_Backslash, HID::Pad::PAD_SELECT },
+    { Qt::Key_Enter, HID::Pad::PAD_START },
+    { Qt::Key_Right, HID::Pad::PAD_RIGHT },
+    { Qt::Key_Left, HID::Pad::PAD_LEFT },
+    { Qt::Key_Up, HID::Pad::PAD_UP },
+    { Qt::Key_Down, HID::Pad::PAD_DOWN },
+    { Qt::Key_R, HID::Pad::PAD_R },
+    { Qt::Key_L, HID::Pad::PAD_L },
+    { Qt::Key_X, HID::Pad::PAD_X },
+    { Qt::Key_Y, HID::Pad::PAD_Y },
+    { Qt::Key_H, HID::Pad::PAD_CIRCLE_RIGHT },
+    { Qt::Key_F, HID::Pad::PAD_CIRCLE_LEFT },
+    { Qt::Key_T, HID::Pad::PAD_CIRCLE_UP },
+    { Qt::Key_G, HID::Pad::PAD_CIRCLE_DOWN },
 };
 
 GRenderWindow::GRenderWindow(QWidget* parent) : QWidget(parent), emu_thread(this)
@@ -236,13 +236,15 @@ QByteArray GRenderWindow::saveGeometry()
 
 void GRenderWindow::keyPressEvent(QKeyEvent* event)
 {
-    EmuWindow::KeyPressed({event->key(), keyboard_id});
-    HID_User::PadUpdateComplete();
+    HID::Pad::PadState mapped_key = KeyMap::GetPadKey({event->key(), keyboard_id});
+    HID::Pad::PadButtonPress(mapped_key);
+    HID::Pad::PadUpdateComplete();
 }
 
 void GRenderWindow::keyReleaseEvent(QKeyEvent* event)
 {
-    EmuWindow::KeyReleased({event->key(), keyboard_id});
-    HID_User::PadUpdateComplete();
+    HID::Pad::PadState mapped_key = KeyMap::GetPadKey({event->key(), keyboard_id});
+    HID::Pad::PadButtonRelease(mapped_key);
+    HID::Pad::PadUpdateComplete();
 }
 
