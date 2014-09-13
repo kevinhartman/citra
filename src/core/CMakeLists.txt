@@ -42,6 +42,8 @@ set(SRCS
             hle/hle.cpp
             hle/svc.cpp
             hw/gpu.cpp
+            hw/hid_pad.cpp
+            hw/hid_touch.cpp
             hw/hw.cpp
             hw/ndma.cpp
             loader/elf.cpp
@@ -97,6 +99,8 @@ set(HEADERS
             hle/hle.h
             hle/svc.h
             hw/gpu.h
+            hw/hid_pad.h
+            hw/hid_touch.h
             hw/hw.h
             hw/ndma.h
             loader/elf.h

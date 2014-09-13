@@ -61,6 +61,7 @@ enum LOG_TYPE {
     WII_IPC_HID,
     KERNEL,
     SVC,
+    HID,
     NDMA,
     HLE,
     RENDER,

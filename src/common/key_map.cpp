@@ -7,18 +7,18 @@
 
 namespace KeyMap {
 
-static std::map<HostDeviceKey, HID_User::PadState> key_map;
+static std::map<HostDeviceKey, HID::Pad::PadState> key_map;
 static int next_device_id = 0;
 
 int NewDeviceId() {
     return next_device_id++;
 }
 
-void SetKeyMapping(HostDeviceKey key, HID_User::PadState padState) {
+void SetKeyMapping(HostDeviceKey key, HID::Pad::PadState padState) {
     key_map[key].hex = padState.hex;
 }
 
-HID_User::PadState GetPadKey(HostDeviceKey key) {
+HID::Pad::PadState GetPadKey(HostDeviceKey key) {
     return key_map[key];
 }
 

@@ -5,13 +5,13 @@
 #include "emu_window.h"
 
 void EmuWindow::KeyPressed(KeyMap::HostDeviceKey key) {
-    HID_User::PadState mapped_key = KeyMap::GetPadKey(key);
+    HID::Pad::PadState mapped_key = KeyMap::GetPadKey(key);
 
-    HID_User::PadButtonPress(mapped_key);
+    HID::Pad::PadButtonPress(mapped_key);
 }
 
 void EmuWindow::KeyReleased(KeyMap::HostDeviceKey key) {
-    HID_User::PadState mapped_key = KeyMap::GetPadKey(key);
+    HID::Pad::PadState mapped_key = KeyMap::GetPadKey(key);
 
-    HID_User::PadButtonRelease(mapped_key);
+    HID::Pad::PadButtonRelease(mapped_key);
 }

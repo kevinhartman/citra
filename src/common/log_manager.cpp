@@ -67,6 +67,7 @@ LogManager::LogManager()
     m_Log[LogTypes::WII_IPC_FILEIO]     = new LogContainer("WII_IPC_FILEIO",    "WII IPC FILEIO");
     m_Log[LogTypes::RENDER]             = new LogContainer("RENDER",            "RENDER");
     m_Log[LogTypes::GPU]                = new LogContainer("GPU",               "GPU");
+    m_Log[LogTypes::HID]                = new LogContainer("HID",               "Human Interface Devices");
     m_Log[LogTypes::SVC]                = new LogContainer("SVC",               "Supervisor Call HLE");
     m_Log[LogTypes::NDMA]               = new LogContainer("NDMA",              "NDMA");
     m_Log[LogTypes::HLE]                = new LogContainer("HLE",               "High Level Emulation");
