@@ -101,21 +101,14 @@ union t128 {
 };
 
 namespace Common {
-/// Rectangle data structure
-class Rect {
-public:
-    Rect(int x0=0, int y0=0, int x1=0, int y1=0) {
-        x0_ = x0;
-        y0_ = y0;
-        x1_ = x1;
-        y1_ = y1;
-    }
-    ~Rect() { }
 
-    int x0_;    ///< Rect top left X-coordinate
-    int y0_;    ///< Rect top left Y-coordinate
-    int x1_;    ///< Rect bottom left X-coordinate
-    int y1_;    ///< Rect bottom right Y-coordinate
+/// Rectangle data structure
+template<typename T>
+struct Rect {
+    T x0_;    ///< Rect top left X-coordinate
+    T y0_;    ///< Rect top left Y-coordinate
+    T x1_;    ///< Rect bottom left X-coordinate
+    T y1_;    ///< Rect bottom right Y-coordinate
 
     inline u32 width() const { return abs(x1_ - x0_); }
     inline u32 height() const { return abs(y1_ - y0_); }
@@ -124,4 +117,16 @@ public:
         return (x0_ == val.x0_ && y0_ == val.y0_ && x1_ == val.x1_ && y1_ == val.y1_);
     }
 };
+
+template<typename T>
+struct Point {
+    T x;
+    T y;
+
+    inline bool operator == (const Point& val) const {
+        return (x == val.x && y == val.y);
+    }
+
+};
+
 }

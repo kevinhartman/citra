@@ -27,13 +27,16 @@ public:
      * @param src_rect Source rectangle in XFB to copy
      * @param dst_rect Destination rectangle in output framebuffer to copy to
      */
-    void RenderXFB(const Common::Rect& src_rect, const Common::Rect& dst_rect);
+    void RenderXFB(const Common::Rect<int>& src_rect, const Common::Rect<int>& dst_rect);
 
     /**
      * Set the emulator window to use for renderer
      * @param window EmuWindow handle to emulator window to use for rendering
      */
     void SetWindow(EmuWindow* window);
+
+    bool ConvertFromWindowToBottomScreenPoint(const Common::Point<double> point_in_window,
+                                          Common::Point<float>* const point_in_bottom_screen);
 
     /// Initialize the renderer
     void Init();

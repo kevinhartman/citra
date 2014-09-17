@@ -11,6 +11,14 @@ namespace Touch {
 // Next Touch update information
 static u32 next_index = 0;
 
+void TouchLocationUpdated(float x, float y) {
+
+}
+
+void TouchReleased() {
+
+}
+
 
 } // namespace
 

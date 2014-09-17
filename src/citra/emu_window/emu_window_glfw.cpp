@@ -48,6 +48,20 @@ void EmuWindow_GLFW::OnKeyEvent(GLFWwindow* win, int key, int scancode, int acti
     HID::Pad::PadUpdateComplete();
 }
 
+/// Called by GLFW when a mouse event occurs
+void OnMouseLocationUpdate(GLFWwindow* win, double x_position, double y_position) {
+
+    // TODO: perhaps the "click" button should be mappable
+    if (glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+
+        Common::Point<float> bottom_screen_coords;
+        if (VideoCore::g_renderer->ConvertFromWindowToBottomScreenPoint({x_position, y_position}, &bottom_screen_coords)) {
+            // TODO: call to HID::Touch:: here
+        }
+    }
+
+}
+
 /// EmuWindow_GLFW constructor
 EmuWindow_GLFW::EmuWindow_GLFW() {
 
@@ -85,6 +99,7 @@ EmuWindow_GLFW::EmuWindow_GLFW() {
     // Setup callbacks
     glfwSetWindowUserPointer(m_render_window, this);
     glfwSetKeyCallback(m_render_window, OnKeyEvent);
+    glfwSetCursorPosCallback(m_render_window, OnMouseLocationUpdate);
 
     DoneCurrent();
 }
