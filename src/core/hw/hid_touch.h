@@ -15,10 +15,14 @@ namespace Touch {
  * Structure of a single entry in the TouchData's touch history array.
  */
 struct TouchDataEntry {
-    s16 x_coord;
-    s16 y_coord;
+    u16 x_coord; // TODO: validate this is unsigned
+    u16 y_coord;
 
     u8 is_valid; // indicates if the touch data is valid
+
+    void SetValid(bool isValid) {
+        is_valid = isValid ? 1 : 0;
+    }
 
     u8 pad1;
     u16 pad2;
