@@ -37,12 +37,6 @@ public:
     /// Gets the size of the window in pixels
     virtual void GetFramebufferSize(int* fbWidth, int* fbHeight) = 0;
 
-    /// Signals a key press action to the HID module
-    static void KeyPressed(KeyMap::HostDeviceKey key);
-
-    /// Signals a key release action to the HID module
-    static void KeyReleased(KeyMap::HostDeviceKey key);
-
     Config GetConfig() const { 
         return m_config;
     }

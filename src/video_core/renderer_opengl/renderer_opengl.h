@@ -35,7 +35,7 @@ public:
      */
     void SetWindow(EmuWindow* window);
 
-    bool ConvertFromWindowToBottomScreenPoint(const Common::Point<double> point_in_window,
+    bool ConvertFromFramebufferToBottomScreenPoint(const Common::Point<double> point_in_window,
                                           Common::Point<float>* const point_in_bottom_screen);
 
     /// Initialize the renderer

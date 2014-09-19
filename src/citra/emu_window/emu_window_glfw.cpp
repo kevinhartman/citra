@@ -55,7 +55,7 @@ void OnMouseLocationUpdate(GLFWwindow* win, double x_position, double y_position
     if (glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 
         Common::Point<float> bottom_screen_coords;
-        if (VideoCore::g_renderer->ConvertFromWindowToBottomScreenPoint({x_position, y_position}, &bottom_screen_coords)) {
+        if (VideoCore::g_renderer->ConvertFromFramebufferToBottomScreenPoint({x_position, y_position}, &bottom_screen_coords)) {
             // TODO: call to HID::Touch:: here
         }
     }

@@ -67,7 +67,7 @@ RendererOpenGL::RendererOpenGL() {
 RendererOpenGL::~RendererOpenGL() {
 }
 
-bool RendererOpenGL::ConvertFromWindowToBottomScreenPoint(const Common::Point<double> point_in_window,
+bool RendererOpenGL::ConvertFromFramebufferToBottomScreenPoint(const Common::Point<double> point_in_window,
                                                       Common::Point<float>* const point_in_bottom_screen) {
     // TODO: stubbed
     if (!point_in_bottom_screen) {
