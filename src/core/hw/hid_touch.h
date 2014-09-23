@@ -43,6 +43,9 @@ struct TouchData {
     std::array<TouchDataEntry, 8> entries; // Touch history (since current touch began)
 };
 
+void TouchLocationUpdated(float x, float y);
+void TouchReleased();
+
 } // namespace
 
 } // namespace

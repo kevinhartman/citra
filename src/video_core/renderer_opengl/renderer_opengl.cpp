@@ -74,7 +74,28 @@ bool RendererOpenGL::ConvertFromFramebufferToBottomScreenPoint(const Common::Poi
         return false;
     }
 
-    *point_in_bottom_screen = {static_cast<float>(point_in_window.x), static_cast<float>(point_in_window.y)};
+    double x_in_viewport = point_in_window.x - viewport_extent.x;
+    double y_in_viewport = point_in_window.y - viewport_extent.y;
+
+    const int bottom_screen_offset = (VideoCore::kScreenTopWidth - VideoCore::kScreenBottomWidth) / 2;
+
+    double x_in_both = (x_in_viewport / viewport_extent.width) * resolution_width;
+    double x_in_bottom = x_in_both - bottom_screen_offset;
+
+    double y_in_both = resolution_height - ((y_in_viewport / viewport_extent.height) * (resolution_height));
+
+    if (x_in_bottom < 0 || x_in_bottom >= VideoCore::kScreenBottomWidth) {
+        return false;
+    }
+
+    if (y_in_both < 0 || y_in_both >= VideoCore::kScreenBottomHeight) {
+        return false;
+    }
+
+    *point_in_bottom_screen = {
+        static_cast<float>(x_in_bottom),
+        static_cast<float>(y_in_both)
+    };
 
     return true;
 

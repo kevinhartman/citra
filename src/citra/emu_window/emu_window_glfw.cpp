@@ -3,8 +3,8 @@
 // Refer to the license.txt file included.
 
 #include "common/common.h"
-
 #include "video_core/video_core.h"
+#include "common/key_map.h"
 
 #include "citra/emu_window/emu_window_glfw.h"
 
@@ -35,31 +35,59 @@ void EmuWindow_GLFW::OnKeyEvent(GLFWwindow* win, int key, int scancode, int acti
     }
 
     int keyboard_id = ((EmuWindow_GLFW*)VideoCore::g_emu_window)->keyboard_id;
+    HID::Pad::PadState mapped_key = KeyMap::GetPadKey({key, keyboard_id});
 
-    if (action == GLFW_PRESS) {
-        HID::Pad::PadState mapped_key = KeyMap::GetPadKey({key, keyboard_id});
+    if (GLFW_PRESS == action) {
         HID::Pad::PadButtonPress(mapped_key);
     }
 
-    if (action == GLFW_RELEASE) {
-        HID::Pad::PadState mapped_key = KeyMap::GetPadKey({key, keyboard_id});
+    if (GLFW_RELEASE == action) {
         HID::Pad::PadButtonRelease(mapped_key);
     }
     HID::Pad::PadUpdateComplete();
 }
 
-/// Called by GLFW when a mouse event occurs
-void OnMouseLocationUpdate(GLFWwindow* win, double x_position, double y_position) {
+void EmuWindow_GLFW::HandleTouchEvent(double x_position, double y_position) {
 
-    // TODO: perhaps the "click" button should be mappable
-    if (glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+    const int pixel_ratio = ((EmuWindow_GLFW*)VideoCore::g_emu_window)->pixel_ratio;
 
-        Common::Point<float> bottom_screen_coords;
-        if (VideoCore::g_renderer->ConvertFromFramebufferToBottomScreenPoint({x_position, y_position}, &bottom_screen_coords)) {
-            // TODO: call to HID::Touch:: here
+    const Common::Point<double> point_in_fb = {
+        x_position * pixel_ratio,
+        y_position * pixel_ratio
+    };
+
+    Common::Point<float> bottom_screen_coords;
+
+    if (VideoCore::g_renderer->ConvertFromFramebufferToBottomScreenPoint(point_in_fb, &bottom_screen_coords)) {
+        HID::Touch::TouchLocationUpdated(bottom_screen_coords.x, bottom_screen_coords.y);
+    }
+}
+
+/// Called by GLFW when a mouse button event occurs
+void EmuWindow_GLFW::OnMouseButtonEvent(GLFWwindow* win, int button, int action, int mods) {
+
+    if (GLFW_MOUSE_BUTTON_LEFT == button) {
+        if (GLFW_PRESS == action) {
+            double x_position;
+            double y_position;
+            glfwGetCursorPos(win, &x_position, &y_position);
+
+            HandleTouchEvent(x_position, y_position);
+        }
+
+        if (GLFW_RELEASE == action) {
+            HID::Touch::TouchReleased();
         }
     }
+}
 
+/// Called by GLFW when a mouse event occurs
+void EmuWindow_GLFW::OnMouseLocationUpdate(GLFWwindow* win, double x_position, double y_position) {
+
+    // TODO: perhaps the "click" button should be mappable
+    if (GLFW_PRESS == glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) ) {
+        HandleTouchEvent(x_position, y_position);
+    }
 }
 
 void EmuWindow_GLFW::GetFramebufferSize(int* fbWidth, int* fbHeight) {
@@ -68,7 +96,7 @@ void EmuWindow_GLFW::GetFramebufferSize(int* fbWidth, int* fbHeight) {
 
 /// EmuWindow_GLFW constructor
 EmuWindow_GLFW::EmuWindow_GLFW() {
-
+    
     // Register a new ID for the default keyboard
     keyboard_id = KeyMap::NewDeviceId();
 
@@ -99,12 +127,20 @@ EmuWindow_GLFW::EmuWindow_GLFW() {
         printf("Failed to create GLFW window! Exiting...");
         exit(1);
     }
+
+    // Calculate framebuffer pixel to window unit ratio
+    int fb_width = 1;
+    int window_width = 1;
+    glfwGetFramebufferSize(m_render_window, &fb_width, nullptr);
+    glfwGetWindowSize(m_render_window, &window_width, nullptr);
+
+    pixel_ratio = fb_width / window_width;
     
     // Setup callbacks
     glfwSetWindowUserPointer(m_render_window, this);
     glfwSetKeyCallback(m_render_window, OnKeyEvent);
     glfwSetCursorPosCallback(m_render_window, OnMouseLocationUpdate);
-
+    glfwSetMouseButtonCallback(m_render_window, OnMouseButtonEvent);
 
     DoneCurrent();
 }
