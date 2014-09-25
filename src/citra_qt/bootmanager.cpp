@@ -8,6 +8,7 @@
 #include "core/core.h"
 #include "core/loader/loader.h"
 #include "core/hw/hw.h"
+#include "common/key_map.h"
 
 #include "video_core/video_core.h"
 
@@ -213,6 +214,7 @@ void GRenderWindow::PollEvents() {
 // The result will be a viewport that is smaller than the extent of the window.
 void GRenderWindow::GetFramebufferSize(int* fbWidth, int* fbHeight)
 {
+    // TODO: change naming
 #if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
     int pixelRatio = child->QPaintDevice::devicePixelRatio();
     
@@ -266,3 +268,49 @@ void GRenderWindow::keyReleaseEvent(QKeyEvent* event)
     HID::Pad::PadUpdateComplete();
 }
 
+void GRenderWindow::HandleTouchEvent(double x_position, double y_position) {
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+    int pixel_ratio = child->QPaintDevice::devicePixelRatio();
+
+    const Common::Point<double> point_in_fb = {
+        x_position * pixel_ratio,
+        y_position * pixel_ratio
+    };
+#else
+    const Common::Point<double> point_in_fb = {
+        x_position,
+        y_position
+    };
+#endif
+
+    Common::Point<float> bottom_screen_coords;
+
+    if (VideoCore::g_renderer->ConvertFromFramebufferToBottomScreenPoint(point_in_fb, &bottom_screen_coords)) {
+        HID::Touch::TouchLocationUpdated(bottom_screen_coords.x, bottom_screen_coords.y);
+    }
+
+}
+
+void GRenderWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    Qt::MouseButtons buttons = QApplication::mouseButtons();
+
+    if (buttons.testFlag(Qt::LeftButton)) {
+        HandleTouchEvent(event->x(), event->y());
+    }
+}
+
+void GRenderWindow::mousePressEvent(QMouseEvent* event) {
+
+    if (Qt::MouseButton::LeftButton == event->button()) {
+        HandleTouchEvent(event->x(), event->y());
+    }
+}
+
+void GRenderWindow::mouseReleaseEvent(QMouseEvent* event) {
+
+    if (Qt::MouseButton::LeftButton == event->button()) {
+        HID::Touch::TouchReleased();
+    }
+}
