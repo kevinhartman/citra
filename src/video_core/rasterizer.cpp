@@ -255,7 +255,7 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
                 if (!texture.enabled)
                     continue;
 
-                _dbg_assert_(HW_GPU, 0 != texture.config.address);
+                //_dbg_assert_(HW_GPU, 0 != texture.config.address);
 
                 int s = (int)(uv[i].u() * float24::FromFloat32(static_cast<float>(texture.config.width))).ToFloat32();
                 int t = (int)(uv[i].v() * float24::FromFloat32(static_cast<float>(texture.config.height))).ToFloat32();
@@ -279,7 +279,7 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
 
                         default:
                             LOG_ERROR(HW_GPU, "Unknown texture coordinate wrapping mode %x\n", (int)mode);
-                            _dbg_assert_(HW_GPU, 0);
+                            //_dbg_assert_(HW_GPU, 0);
                             return 0;
                     }
                 };
@@ -335,8 +335,35 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
 
                     default:
                         LOG_ERROR(HW_GPU, "Unknown color combiner source %d\n", (int)source);
-                        _dbg_assert_(HW_GPU, 0);
+                        //_dbg_assert_(HW_GPU, 0);
                         return {};
+                    }
+                };
+
+                auto GetAlphaSource = [&](Source source) -> u8 {
+                    switch (source) {
+                    case Source::PrimaryColor:
+                        return primary_color.a();
+
+                    case Source::Texture0:
+                        return texture_color[0].a();
+
+                    case Source::Texture1:
+                        return texture_color[1].a();
+
+                    case Source::Texture2:
+                        return texture_color[2].a();
+
+                    case Source::Constant:
+                        return tev_stage.const_a;
+
+                    case Source::Previous:
+                        return combiner_output.a();
+
+                    default:
+                        LOG_ERROR(HW_GPU, "Unknown alpha combiner source %d\n", (int)source);
+                        //_dbg_assert_(HW_GPU, 0);
+                        return 0;
                     }
                 };
 
@@ -452,7 +479,7 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
 
                     default:
                         LOG_ERROR(HW_GPU, "Unknown color combiner operation %d\n", (int)op);
-                        _dbg_assert_(HW_GPU, 0);
+                        //_dbg_assert_(HW_GPU, 0);
                         return {};
                     }
                 };
@@ -482,7 +509,7 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
 
                     default:
                         LOG_ERROR(HW_GPU, "Unknown alpha combiner operation %d\n", (int)op);
-                        _dbg_assert_(HW_GPU, 0);
+                        //_dbg_assert_(HW_GPU, 0);
                         return 0;
                     }
                 };
@@ -652,8 +679,8 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
                         return Math::Vec3<u8>(255 - registers.output_merger.blend_const.a, 255 - registers.output_merger.blend_const.a, 255 - registers.output_merger.blend_const.a);
 
                     default:
-                        LOG_CRITICAL(HW_GPU, "Unknown color blend factor %x", factor);
-                        exit(0);
+                        return Math::Vec3<u8>(0, 0, 0); //LOG_CRITICAL(HW_GPU, "Unknown color blend factor %x", factor);
+                        //exit(0);
                         break;
                     }
                 };
@@ -685,8 +712,8 @@ void ProcessTriangle(const VertexShader::OutputVertex& v0_,
                         return 255 - registers.output_merger.blend_const.a;
 
                     default:
-                        LOG_CRITICAL(HW_GPU, "Unknown alpha blend factor %x", factor);
-                        exit(0);
+                        return 0; //LOG_CRITICAL(HW_GPU, "Unknown alpha blend factor %x", factor);
+                        //exit(0);
                         break;
                     }
                 };
