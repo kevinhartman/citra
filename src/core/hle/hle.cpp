@@ -44,6 +44,7 @@ void CallSVC(u32 opcode) {
     }
 }
 
+    // TODO(peachum): remove
 void Reschedule(const char *reason) {
     _dbg_assert_msg_(Kernel, reason != 0 && strlen(reason) < 256, "Reschedule: Invalid or too long reason.");
 

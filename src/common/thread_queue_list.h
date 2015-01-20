@@ -12,7 +12,7 @@
 #include "common/common.h"
 
 namespace Common {
-
+// TODO(peachum): just make this a max heap with queues for nodes?
 template<class T, unsigned int N>
 struct ThreadQueueList {
     // TODO(yuriks): If performance proves to be a problem, the std::deques can be replaced with
