@@ -29,11 +29,11 @@ set(SRCS
             hle/kernel/event.cpp
             hle/kernel/kernel.cpp
             hle/kernel/mutex.cpp
+            hle/kernel/priority_scheduler.cpp
             hle/kernel/semaphore.cpp
             hle/kernel/shared_memory.cpp
             hle/kernel/timer.cpp
             hle/kernel/thread.cpp
-            hle/kernel/scheduler.cpp
             hle/service/ac_u.cpp
             hle/service/act_u.cpp
             hle/service/am_app.cpp
@@ -128,12 +128,13 @@ set(HEADERS
             hle/kernel/event.h
             hle/kernel/kernel.h
             hle/kernel/mutex.h
+            hle/kernel/priority_scheduler.h
+            hle/kernel/scheduler.h
             hle/kernel/semaphore.h
             hle/kernel/session.h
             hle/kernel/shared_memory.h
             hle/kernel/timer.h
             hle/kernel/thread.h
-            hle/kernel/scheduler.h
             hle/service/ac_u.h
             hle/service/act_u.h
             hle/service/am_app.h

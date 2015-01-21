@@ -16,6 +16,8 @@
 #include "core/hle/kernel/thread.h"
 #include "core/hw/hw.h"
 
+#include "core/hle/kernel/priority_scheduler.h"
+
 namespace Core {
 
 ARM_Interface*     g_app_core = nullptr;  ///< ARM11 application core
@@ -23,6 +25,9 @@ ARM_Interface*     g_sys_core = nullptr;  ///< ARM11 system (OS) core
 
 /// Run the core CPU loop
 void RunLoop(int tight_loop) {
+
+    Core::Scheduler = Kernel::PriorityScheduler::Get();
+
     // If the current thread is an idle thread, then don't execute instructions,
     // instead advance to the next event and try to yield to the next thread
     if (Kernel::GetCurrentThread()->IsIdle()) {

@@ -11,6 +11,7 @@
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/thread.h"
 #include "core/hle/kernel/timer.h"
+#include "core/hle/kernel/scheduler.h"
 
 namespace Kernel {
 
@@ -116,7 +117,7 @@ bool HandleTable::IsValid(Handle handle) const {
 
 SharedPtr<Object> HandleTable::GetGeneric(Handle handle) const {
     if (handle == CurrentThread) {
-        return GetCurrentThread();
+        return Core::Scheduler->GetCurrentThread();
     } else if (handle == CurrentProcess) {
         LOG_ERROR(Kernel, "Current process (%08X) pseudo-handle not supported", CurrentProcess);
         return nullptr;

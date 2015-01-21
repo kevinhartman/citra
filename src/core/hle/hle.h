@@ -13,8 +13,6 @@
 
 namespace HLE {
 
-extern bool g_reschedule;   ///< If true, immediately reschedules the CPU to a new thread
-
 typedef u32 Addr;
 typedef void (*Func)();
 
@@ -33,8 +31,6 @@ struct ModuleDef {
 void RegisterModule(std::string name, int num_functions, const FunctionDef *func_table);
 
 void CallSVC(u32 opcode);
-
-void Reschedule(const char *reason);
 
 void Init();
 

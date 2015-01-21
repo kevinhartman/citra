@@ -6,7 +6,7 @@
 #include "core/hle/kernel/mutex.h"
 #include "core/arm/arm_interface.h"
 
-#include "scheduler.h"
+#include "priority_scheduler.h"
 
 namespace Kernel {
 
@@ -101,7 +101,7 @@ void PriorityScheduler::ResumeFromWait(Thread* thread) {
         } else {
             // This should never happen, as threads must complete before being stopped.
             LOG_ERROR(Kernel, "Thread with handle %d cannot be resumed because it's %d.",
-                thread->GetHandle(), state->status);
+                      thread->GetHandle(), state->status);
             _dbg_assert_(Kernel, false);
         }
     }
@@ -167,7 +167,7 @@ void PriorityScheduler::ExitCurrentThread() {
         ThreadState* waiting_state = &thread_data[waiting_thread.get()];
 
         if (CheckWaitType(waiting_state, WAITTYPE_THREADEND, current_thread))
-            waiting_thread->ResumeFromWait();
+            ResumeFromWait(waiting_thread.get());
     }
 
     current_thread->waiting_threads.clear();
@@ -201,7 +201,7 @@ Thread* PriorityScheduler::ArbitrateHighestPriorityThread(Object* arbiter, u32 a
     if (nullptr != highest_priority_thread) {
         ResumeFromWait(highest_priority_thread);
     }
-    
+
     return highest_priority_thread;
 }
 
@@ -291,15 +291,15 @@ void PriorityScheduler::Reschedule(PriorityScheduler::Core* core) {
             ThreadState* state = &thread_data[thread.get()];
 #endif
             LOG_TRACE(Kernel,
-                "\thandle=0x%08X prio=0x%02X, core=0x%08X status=0x%08X wait_type=0x%08X wait_handle=0x%08X",
-                thread->GetHandle(),
-                state->current_priority,
-                state->core, // TODO(peachum): print core number
-                state->status,
-                state->wait_type,
-                state->status == THREADSTATUS_WAIT && state->wait_type != WAITTYPE_NONE && state->wait_object
-                    ? state->wait_object->GetHandle()
-                    : INVALID_HANDLE);
+                      "\thandle=0x%08X prio=0x%02X, core=0x%08X status=0x%08X wait_type=0x%08X wait_handle=0x%08X",
+                      thread->GetHandle(),
+                      state->current_priority,
+                      state->core, // TODO(peachum): print core number
+                      state->status,
+                      state->wait_type,
+                      state->status == THREADSTATUS_WAIT && state->wait_type != WAITTYPE_NONE && state->wait_object
+                      ? state->wait_object->GetHandle()
+                      : INVALID_HANDLE);
         }
     }
 }
@@ -319,43 +319,22 @@ Thread* PriorityScheduler::PopNextReadyThread(Core* core) {
     return next->thread;
 }
 
-void PriorityScheduler::ApplicationCore::Update(PriorityScheduler* scheduler/*, system ticks */) {
-    if (needs_reschedule) {
-        scheduler->Reschedule(this); // TODO(peachum): remove rescheduling flag etc
-        needs_reschedule = false;
-    }
-}
-
-void PriorityScheduler::SystemCore::Update(PriorityScheduler* scheduler/*, system ticks */) {
-    // TODO(peachum): reschedule if past timeslice or if reschedule is set
-}
-
 void PriorityScheduler::SetCurrentCore(ThreadProcessorId id) {
     current_core_id = id;
 }
 
 void PriorityScheduler::Update(/* system ticks */) {
     for (Core& core : cores) {
-        core.Update(this);
+        if (SchedulingBehavior::SYSTEM_CORE == core->behavior) {
+            // TODO(peachum): reschedule if past time
+        }
     }
 }
 
 void PriorityScheduler::RegisterCore(ThreadProcessorId id, ARM_Interface* arm_core, SchedulingBehavior scheduling_behavior) {
+    Core* core = &cores[id];
 
-    Core* core = nullptr;
-
-    switch (scheduling_behavior) {
-        case APPLICATION_CORE:
-            core = &(cores[id] = ApplicationCore());
-            break;
-        case SYSTEM_CORE:
-            core = &(cores[id] = SystemCore());
-            break;
-        default:
-            _dbg_assert_(Kernel, false); // Unimplemented scheduling behavior
-            core = &(cores[id] = ApplicationCore());
-            break;
-    }
+    core->behavior = scheduling_behavior;
     core->arm_core = arm_core;
 }
 
@@ -376,8 +355,8 @@ void PriorityScheduler::ThreadWakeupCallback(u64 parameter, int cycles_late) {
         LOG_ERROR(Kernel, "Thread doesn't exist %u", handle);
         return;
     }
-
-    thread->ResumeFromWait();
+    
+    ResumeFromWait(thread.get());
 }
 
 /// Check if a thread is blocking on a specified wait type
@@ -394,5 +373,5 @@ bool PriorityScheduler::CheckWaitType(const ThreadState* state, WaitType type, O
 bool PriorityScheduler::CheckWaitType(const ThreadState* state, WaitType type, Object* wait_object, VAddr wait_address) {
     return CheckWaitType(state, type, wait_object) && (wait_address == state->wait_address);
 }
-
+    
 }
