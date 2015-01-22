@@ -23,18 +23,14 @@
 
 namespace Kernel {
 
-ResultVal<bool> Thread::WaitSynchronization() {
-    const bool wait = status != THREADSTATUS_DORMANT;
-    if (wait) {
-        Thread* thread = GetCurrentThread();
-        if (std::find(waiting_threads.begin(), waiting_threads.end(), thread) == waiting_threads.end()) {
-            waiting_threads.push_back(thread);
-        }
-        WaitCurrentThread(WAITTYPE_THREADEND, this);
-    }
-
-    return MakeResult<bool>(wait);
+bool Thread::ShouldWait() {
+    return status != THREADSTATUS_DORMANT;
 }
+
+void Thread::Acquire() {
+    _assert_msg_(Kernel, !ShouldWait(), "object unavailable!");
+}
+
 
 // TODO(peachum): this should probably go onto ARM_Interface
 /// Resets a thread

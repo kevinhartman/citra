@@ -61,7 +61,7 @@ void PriorityScheduler::ScheduleThread(Thread* thread, s32 priority) {
     state->status = THREADSTATUS_DORMANT;
 
     state->wait_type = WAITTYPE_NONE;
-    state->wait_object = nullptr;
+    state->wait_objects.clear();
     state->wait_address = 0;
 
     MakeReady(state);
@@ -161,22 +161,13 @@ void PriorityScheduler::ExitCurrentThread() {
 
     MakeNotReady(state, THREADSTATUS_DEAD);
 
-    for (auto& waiting_thread : current_thread->waiting_threads) {
-        _dbg_assert_(Kernel, thread_data.find(waiting_thread.get()) == thread_data.end());
-
-        ThreadState* waiting_state = &thread_data[waiting_thread.get()];
-
-        if (CheckWaitType(waiting_state, WAITTYPE_THREADEND, current_thread))
-            ResumeFromWait(waiting_thread.get());
-    }
-
-    current_thread->waiting_threads.clear();
+    current_thread->WakeupAllWaitingThreads();
 
     Reschedule(state->core);
 }
 
 /// Arbitrate the highest priority thread that is waiting
-Thread* PriorityScheduler::ArbitrateHighestPriorityThread(Object* arbiter, u32 address) {
+Thread* PriorityScheduler::ArbitrateHighestPriorityThread(u32 address) {
     Thread* highest_priority_thread = nullptr;
     s32 priority = THREADPRIO_LOWEST;
 
@@ -184,7 +175,7 @@ Thread* PriorityScheduler::ArbitrateHighestPriorityThread(Object* arbiter, u32 a
     // Iterate through threads, find highest priority thread that is waiting to be arbitrated...
     for (auto& thread : thread_list) {
         ThreadState* state = &thread_data[thread.get()];
-        if (!CheckWaitType(state, WAITTYPE_ARB, arbiter, address))
+        if (!CheckWait_AddressArbiter(state, address))
             continue;
 
         // TODO(peachum): this will never happen if ended threads are removed from thread_list
@@ -206,11 +197,11 @@ Thread* PriorityScheduler::ArbitrateHighestPriorityThread(Object* arbiter, u32 a
 }
 
 /// Arbitrate all threads currently waiting
-void PriorityScheduler::ArbitrateAllThreads(Object* arbiter, u32 address) {
+void PriorityScheduler::ArbitrateAllThreads(u32 address) {
     for (auto& thread : thread_list) {
         ThreadState* state = &thread_data[thread.get()];
 
-        if (CheckWaitType(state, WAITTYPE_ARB, arbiter, address))
+        if (CheckWait_AddressArbiter(state, address))
             ResumeFromWait(thread.get());
     }
 }
@@ -323,18 +314,36 @@ void PriorityScheduler::SetCurrentCore(ThreadProcessorId id) {
     current_core_id = id;
 }
 
+void PriorityScheduler::CoreUpdate(ApplicationCore* core/*, system ticks */) {
+
+}
+
+void PriorityScheduler::CoreUpdate(SystemCore* core/*, system ticks */) {
+
+}
+
 void PriorityScheduler::Update(/* system ticks */) {
     for (Core& core : cores) {
-        if (SchedulingBehavior::SYSTEM_CORE == core->behavior) {
-            // TODO(peachum): reschedule if past time
-        }
+        core.Update(this);
     }
 }
 
 void PriorityScheduler::RegisterCore(ThreadProcessorId id, ARM_Interface* arm_core, SchedulingBehavior scheduling_behavior) {
-    Core* core = &cores[id];
+    Core* core = nullptr;
 
-    core->behavior = scheduling_behavior;
+    switch (scheduling_behavior) {
+        case APPLICATION_CORE:
+            core = &(cores[id] = ApplicationCore());
+            break;
+        case SYSTEM_CORE:
+            core = &(cores[id] = SystemCore());
+        break;
+        default:
+            _dbg_assert_(Kernel, false); // Unimplemented scheduling behavior
+            core = &(cores[id] = ApplicationCore());
+        break;
+    }
+
     core->arm_core = arm_core;
 }
 
@@ -359,19 +368,18 @@ void PriorityScheduler::ThreadWakeupCallback(u64 parameter, int cycles_late) {
     ResumeFromWait(thread.get());
 }
 
-/// Check if a thread is blocking on a specified wait type
-bool PriorityScheduler::CheckWaitType(const ThreadState* state, WaitType type) {
-    return (type == state->wait_type) && (state->IsWaiting());
+/// Check if a thread is waiting on a the specified wait object
+bool PriorityScheduler::CheckWait_WaitObject(const ThreadState* state, WaitObject* wait_object) {
+    if (!state->IsWaiting()) return false;
+
+    auto itr = std::find(state->wait_objects.begin(), state->wait_objects.end(), wait_object);
+    return itr != state->wait_objects.end();
 }
 
-/// Check if a thread is blocking on a specified wait type with a specified handle
-bool PriorityScheduler::CheckWaitType(const ThreadState* state, WaitType type, Object* wait_object) {
-    return CheckWaitType(state, type) && wait_object == state->wait_object;
-}
-
-/// Check if a thread is blocking on a specified wait type with a specified handle and address
-bool PriorityScheduler::CheckWaitType(const ThreadState* state, WaitType type, Object* wait_object, VAddr wait_address) {
-    return CheckWaitType(state, type, wait_object) && (wait_address == state->wait_address);
+/// Check if the specified thread is waiting on the specified address to be arbitrated
+bool PriorityScheduler::CheckWait_AddressArbiter(const ThreadState* state, VAddr wait_address) {
+    // TODO(peachum): probably reintroduce wait_type
+    return state->IsWaiting() && state->wait_objects.empty() && wait_address == state->wait_address;
 }
     
 }

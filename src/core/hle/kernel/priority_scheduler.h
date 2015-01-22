@@ -32,8 +32,8 @@ public:
     void SetPriority(Thread* thread, s32 priority);
     void ExitCurrentThread();
 
-    Thread* ArbitrateHighestPriorityThread(Object* arbiter, u32 address);
-    void ArbitrateAllThreads(Object* arbiter, u32 address);
+    Thread* ArbitrateHighestPriorityThread(u32 address);
+    void ArbitrateAllThreads(u32 address);
 
 protected:
     struct Core;
@@ -47,8 +47,10 @@ protected:
         s32 current_priority;
 
         WaitType wait_type;
-        Object* wait_object;
         VAddr wait_address;
+        std::vector<SharedPtr<WaitObject>> wait_objects; ///< Objects that the thread is waiting on
+        bool wait_all;          ///< True if the thread is waiting on all objects before
+        bool wait_set_output;   ///< True if the output parameter should be set on thread wakeup
 
         Thread* thread;
 
@@ -69,7 +71,24 @@ protected:
         ThreadState* current_thread_state;
 
         SchedulingBehavior behavior;
+        virtual void Update(PriorityScheduler* scheduler);
     };
+
+    struct ApplicationCore : Core {
+        void Update(PriorityScheduler* scheduler) {
+            scheduler->CoreUpdate(this);
+        }
+    };
+
+    struct SystemCore : Core {
+        u64 ticks_since_slice;
+        void Update(PriorityScheduler* scheduler) {
+            scheduler->CoreUpdate(this);
+        }
+    };
+
+    void CoreUpdate(ApplicationCore* core);
+    void CoreUpdate(SystemCore* core);
 
     ThreadState* GetCurrentThreadState();
     Thread* PopNextReadyThread(Core* core);
@@ -89,9 +108,8 @@ private:
         return thread_id++;
     }
 
-    static bool CheckWaitType(const ThreadState* state, WaitType type);
-    static bool CheckWaitType(const ThreadState* state, WaitType type, Object* wait_object);
-    static bool CheckWaitType(const ThreadState* state, WaitType type, Object* wait_object, VAddr wait_address);
+    static bool CheckWait_WaitObject(const ThreadState* state, WaitObject* wait_object);
+    static bool CheckWait_AddressArbiter(const ThreadState* thread, VAddr wait_address);
 
     // Current core to operate on
     ThreadProcessorId current_core_id; //TODO(peachum): this will probably have to be thread_local when we do multi-threading

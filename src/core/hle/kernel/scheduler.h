@@ -37,8 +37,8 @@ public:
     virtual void SetPriority(Thread* thread, s32 priority) = 0;
     virtual void ExitCurrentThread() = 0;
 
-    virtual Thread* ArbitrateHighestPriorityThread(Object* arbiter, u32 address) = 0;
-    virtual void ArbitrateAllThreads(Object* arbiter, u32 address) = 0;
+    virtual Thread* ArbitrateHighestPriorityThread(u32 address) = 0;
+    virtual void ArbitrateAllThreads(u32 address) = 0;
 };
 
 };

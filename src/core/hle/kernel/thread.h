@@ -52,7 +52,7 @@ enum WaitType {
 
 namespace Kernel {
 
-class Thread : public Kernel::Object {
+class Thread : public WaitObject {
 public:
     static ResultVal<SharedPtr<Thread>> Create(std::string name, VAddr entry_point,
         u32 arg, s32 processor_id, VAddr stack_top, u32 stack_size);
@@ -63,7 +63,14 @@ public:
     static const HandleType HANDLE_TYPE = HandleType::Thread;
     HandleType GetHandleType() const override { return HANDLE_TYPE; }
 
-    ResultVal<bool> WaitSynchronization() override;
+    bool ShouldWait() override;
+    void Acquire() override;
+
+    /**
+     * Release an acquired wait object
+     * @param wait_object WaitObject to release
+     */
+    void ReleaseWaitObject(WaitObject* wait_object);
 
     Core::ThreadContext context;
 
@@ -74,8 +81,6 @@ public:
     s32 processor_id;
 
     std::string name;
-
-    std::vector<SharedPtr<Thread>> waiting_threads;
 
     /// Whether this thread is intended to never actually be executed, i.e. always idle
     bool idle = false; // TODO(peachum): move this if needed
