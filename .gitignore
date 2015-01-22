@@ -8,6 +8,7 @@ src/common/scm_rev.cpp
 # Project/editor files
 *.swp
 .idea/
+*.orig
 
 # *nix related
 # Common convention for backup or temporary files
