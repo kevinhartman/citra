@@ -11,6 +11,7 @@ namespace Kernel {
 class PriorityScheduler : public Scheduler {
 
 public:
+    // TODO(peachum): no need for this to be a singleton
     static Scheduler* Get() {
         static PriorityScheduler scheduler;
         return (Scheduler *)&scheduler; // TODO(peachum): why on earth does this need a cast?

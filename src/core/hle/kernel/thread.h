@@ -54,7 +54,7 @@ namespace Kernel {
 
 class Thread : public Kernel::Object {
 public:
-    static ResultVal<SharedPtr<Thread>> Create(std::string name, VAddr entry_point, s32 priority,
+    static ResultVal<SharedPtr<Thread>> Create(std::string name, VAddr entry_point,
         u32 arg, s32 processor_id, VAddr stack_top, u32 stack_size);
 
     std::string GetName() const override { return name; }

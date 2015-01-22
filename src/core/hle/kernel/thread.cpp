@@ -36,8 +36,9 @@ ResultVal<bool> Thread::WaitSynchronization() {
     return MakeResult<bool>(wait);
 }
 
+// TODO(peachum): this should probably go onto ARM_Interface
 /// Resets a thread
-static void ResetThread(Thread* t, u32 arg) { // TODO(peachum): make static
+static void ResetThread(Thread* t, u32 arg) {
     memset(&t->context, 0, sizeof(Core::ThreadContext));
 
     t->context.cpu_registers[0] = arg;
@@ -99,7 +100,7 @@ ResultVal<SharedPtr<Thread>> Thread::Create(std::string name, VAddr entry_point,
     thread->processor_id = processor_id;
     thread->name = std::move(name);
 
-    ResetThread(thread.get(), arg, 0);
+    ResetThread(thread.get(), arg);
 
     return MakeResult<SharedPtr<Thread>>(std::move(thread));
 }
