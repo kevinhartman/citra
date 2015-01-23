@@ -11,12 +11,6 @@ namespace Kernel {
 class PriorityScheduler : public Scheduler {
 
 public:
-    // TODO(peachum): no need for this to be a singleton
-    static Scheduler* Get() {
-        static PriorityScheduler scheduler;
-        return (Scheduler *)&scheduler; // TODO(peachum): why on earth does this need a cast?
-    };
-
     void Init();
     void RegisterCore(ThreadProcessorId id, ARM_Interface* core, SchedulingBehavior scheduling_behavior);
     void Shutdown();
@@ -25,18 +19,38 @@ public:
 
     Thread* GetCurrentThread();
     void ScheduleThread(Thread* thread, s32 priority);
-    void WaitCurrentThread(WaitType wait_type, Object* wait_object);
-    void WaitCurrentThread(WaitType wait_type, Object* wait_object, VAddr wait_address);
+    void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,
+        bool wait_set_output, bool wait_all);
+    void WaitCurrentThread_Sleep();
+    void WaitCurrentThread_ArbitrateAddress(VAddr wait_address);
     void ResumeFromWait(Thread* thread);
-    void Sleep(s64 nanoseconds);
+    void WakeThreadAfterDelay(Thread* thread, s64 nanoseconds);
     void SetPriority(Thread* thread, s32 priority);
     void ExitCurrentThread();
 
     Thread* ArbitrateHighestPriorityThread(u32 address);
     void ArbitrateAllThreads(u32 address);
+    void ReleaseWaitObject(WaitObject* wait_object);
 
 protected:
     struct Core;
+
+    enum ThreadPriority {
+        THREADPRIO_HIGHEST      = 0,    ///< Highest thread priority
+        THREADPRIO_DEFAULT      = 16,   ///< Default thread priority for userland apps
+        THREADPRIO_LOW          = 31,   ///< Low range of thread priority for userland apps
+        THREADPRIO_LOWEST       = 63,   ///< Thread priority max checked by svcCreateThread
+    };
+
+    enum ThreadStatus {
+        THREADSTATUS_RUNNING,
+        THREADSTATUS_READY,
+        THREADSTATUS_WAIT_ARB,
+        THREADSTATUS_WAIT_SLEEP,
+        THREADSTATUS_WAIT_SYNC,
+        THREADSTATUS_DORMANT,
+        THREADSTATUS_DEAD
+    };
 
     struct ThreadState {
         u32 thread_id; // TODO(peachum): should this be on Thread?
@@ -46,19 +60,12 @@ protected:
         s32 initial_priority; // for debugging only
         s32 current_priority;
 
-        WaitType wait_type;
         VAddr wait_address;
         std::vector<SharedPtr<WaitObject>> wait_objects; ///< Objects that the thread is waiting on
         bool wait_all;          ///< True if the thread is waiting on all objects before
         bool wait_set_output;   ///< True if the output parameter should be set on thread wakeup
 
         Thread* thread;
-
-        inline bool IsRunning() const { return (status & THREADSTATUS_RUNNING) != 0; }
-        inline bool IsStopped() const { return (status & THREADSTATUS_DORMANT) != 0; }
-        inline bool IsReady() const { return (status & THREADSTATUS_READY) != 0; }
-        inline bool IsWaiting() const { return (status & THREADSTATUS_WAIT) != 0; }
-        inline bool IsSuspended() const { return (status & THREADSTATUS_SUSPEND) != 0; }
     };
 
     struct Core {
@@ -70,7 +77,6 @@ protected:
         Thread* current_thread;
         ThreadState* current_thread_state;
 
-        SchedulingBehavior behavior;
         virtual void Update(PriorityScheduler* scheduler);
     };
 
@@ -99,7 +105,6 @@ protected:
     void ThreadWakeupCallback(u64 parameter, int cycles_late);
 
 private:
-    PriorityScheduler() { }
     PriorityScheduler(PriorityScheduler const&);
     void operator=(PriorityScheduler const&);
 
@@ -108,6 +113,7 @@ private:
         return thread_id++;
     }
 
+    static void ClampPriority(const Thread* thread, s32* priority);
     static bool CheckWait_WaitObject(const ThreadState* state, WaitObject* wait_object);
     static bool CheckWait_AddressArbiter(const ThreadState* thread, VAddr wait_address);
 

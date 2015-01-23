@@ -18,7 +18,7 @@ PriorityScheduler::ThreadState* PriorityScheduler::GetCurrentThreadState() {
     return cores[current_core_id].current_thread_state;
 }
 
-static void ClampPriority(const Thread* thread, s32* priority) {
+void PriorityScheduler::ClampPriority(const Thread* thread, s32* priority) {
     if (*priority < THREADPRIO_HIGHEST || *priority > THREADPRIO_LOWEST) {
         s32 new_priority = CLAMP(*priority, THREADPRIO_HIGHEST, THREADPRIO_LOWEST);
         LOG_WARNING(Kernel_SVC, "(name=%s): invalid priority=%d, clamping to %d",
@@ -60,7 +60,6 @@ void PriorityScheduler::ScheduleThread(Thread* thread, s32 priority) {
     state->initial_priority = state->current_priority = priority;
     state->status = THREADSTATUS_DORMANT;
 
-    state->wait_type = WAITTYPE_NONE;
     state->wait_objects.clear();
     state->wait_address = 0;
 
@@ -70,19 +69,29 @@ void PriorityScheduler::ScheduleThread(Thread* thread, s32 priority) {
     // to mimic 3DS scheduler behavior on startThread
 }
 
-void PriorityScheduler::WaitCurrentThread(WaitType wait_type, Object* wait_object) {
+void PriorityScheduler::WaitCurrentThread_Sleep() {
     ThreadState* state = GetCurrentThreadState();
-
-    MakeNotReady(state, THREADSTATUS_WAIT);
-    state->wait_type = wait_type;
-    state->wait_object = wait_object;
-
-    Reschedule(state->core); // TODO(peachum): NOT SAFE. Make this just one func with one below
+    MakeNotReady(state, THREADSTATUS_WAIT_SLEEP);
+    Reschedule(state->core);
 }
 
-void PriorityScheduler::WaitCurrentThread(WaitType wait_type, Object* wait_object, VAddr wait_address) {
-    WaitCurrentThread(wait_type, wait_object);
-    GetCurrentThreadState()->wait_address = wait_address;
+void PriorityScheduler::WaitCurrentThread_WaitSynchronization(
+    std::vector<SharedPtr<WaitObject>> wait_objects, bool wait_set_output, bool wait_all) {
+
+    ThreadState* state = GetCurrentThreadState();
+    state->wait_set_output = wait_set_output;
+    state->wait_all = wait_all;
+    state->wait_objects.insert(state->wait_objects.end(), wait_objects.begin(), wait_objects.end());
+
+    MakeNotReady(state, THREADSTATUS_WAIT_SYNC);
+    Reschedule(state->core);
+}
+
+void PriorityScheduler::WaitCurrentThread_ArbitrateAddress(VAddr wait_address) {
+    ThreadState* state = GetCurrentThreadState();
+    state->wait_address = wait_address;
+    MakeNotReady(state, THREADSTATUS_WAIT_ARB);
+    Reschedule(state->core);
 }
 
 /// Resumes a thread from waiting by marking it as "ready"
@@ -95,34 +104,39 @@ void PriorityScheduler::ResumeFromWait(Thread* thread) {
 
     ThreadState* state = &thread_data[thread];
 
-    if (state->status != THREADSTATUS_WAIT) {
-        if (state->status == THREADSTATUS_READY) {
+    switch (state->status) {
+        case THREADSTATUS_WAIT_SYNC:
+            // Remove this thread from all other WaitObjects
+            for (auto wait_object : state->wait_objects)
+                wait_object->RemoveWaitingThread(thread);
+            break;
+        case THREADSTATUS_WAIT_ARB:
+        case THREADSTATUS_WAIT_SLEEP:
+            break;
+        case THREADSTATUS_READY:
             LOG_DEBUG(Kernel, "Thread with handle %d has already resumed. Ignoring.", thread->GetHandle());
-        } else {
+            break;
+
+        default:
             // This should never happen, as threads must complete before being stopped.
             LOG_ERROR(Kernel, "Thread with handle %d cannot be resumed because it's %d.",
                       thread->GetHandle(), state->status);
             _dbg_assert_(Kernel, false);
-        }
+            break;
     }
 
     MakeReady(state);
 }
 
-void PriorityScheduler::Sleep(s64 nanoseconds) {
-    Thread* current_thread = GetCurrentThread();
-
-    _dbg_assert_(Kernel, current_thread);
-    WaitCurrentThread(WAITTYPE_SLEEP, current_thread);
-
-    Reschedule(GetCurrentThreadState()->core);
+void PriorityScheduler::WakeThreadAfterDelay(Thread* thread, s64 nanoseconds) {
+    //_dbg_assert_(Kernel, current_thread);
 
     // Don't schedule a wakeup if the thread wants to sleep forever
     if (nanoseconds == -1)
         return;
 
     u64 microseconds = nanoseconds / 1000;
-    CoreTiming::ScheduleEvent(usToCycles(microseconds), thread_wakeup_event_id, current_thread->GetHandle());
+    CoreTiming::ScheduleEvent(usToCycles(microseconds), thread_wakeup_event_id, thread->GetHandle());
 }
 
 /// Set the priority of the thread specified by handle
@@ -138,7 +152,7 @@ void PriorityScheduler::SetPriority(Thread* thread, s32 priority) {
         return;
     }
 
-    if (state->IsReady()) {
+    if (THREADSTATUS_READY == state->status) {
         // If thread was ready, adjust queues
         state->core->thread_ready_queue.remove(state->current_priority, state);
         state->core->thread_ready_queue.prepare(priority);
@@ -211,7 +225,7 @@ void PriorityScheduler::MakeReady(ThreadState* state) { // TODO(peachum): pass c
     Core* core = state->core;
 
     // TODO(peachum): why is the current thread moved to front instead of back like everyone else?
-    if (state->status == THREADSTATUS_RUNNING) {
+    if (THREADSTATUS_RUNNING == state->status) {
         core->thread_ready_queue.push_front(state->current_priority, state);
     } else {
         core->thread_ready_queue.push_back(state->current_priority, state);
@@ -223,7 +237,7 @@ void PriorityScheduler::MakeReady(ThreadState* state) { // TODO(peachum): pass c
 void PriorityScheduler::MakeNotReady(ThreadState* state, ThreadStatus reason) {
     _dbg_assert_(Kernel, (reason & THREADSTATUS_READY) == 0)
 
-    if (state->IsReady()) {
+    if (THREADSTATUS_READY == state->status) {
         state->core->thread_ready_queue.remove(state->current_priority, state);
     }
 
@@ -276,21 +290,14 @@ void PriorityScheduler::Reschedule(PriorityScheduler::Core* core) {
         SwitchContext(core, next);
     } else {
         LOG_TRACE(Kernel, "cannot context switch from 0x%08X, no higher priority thread!", prev->GetHandle());
+        // TODO(peachum): context switch to null if need be to have idling
 
         for (auto& thread : thread_list) {
 #ifdef _DEBUG
             ThreadState* state = &thread_data[thread.get()];
 #endif
-            LOG_TRACE(Kernel,
-                      "\thandle=0x%08X prio=0x%02X, core=0x%08X status=0x%08X wait_type=0x%08X wait_handle=0x%08X",
-                      thread->GetHandle(),
-                      state->current_priority,
-                      state->core, // TODO(peachum): print core number
-                      state->status,
-                      state->wait_type,
-                      state->status == THREADSTATUS_WAIT && state->wait_type != WAITTYPE_NONE && state->wait_object
-                      ? state->wait_object->GetHandle()
-                      : INVALID_HANDLE);
+            LOG_TRACE(Kernel, "\thandle=0x%08X prio=0x%02X, status=0x%08X", thread->GetHandle(),
+                state->current_priority, state->status);
         }
     }
 }
@@ -299,7 +306,7 @@ Thread* PriorityScheduler::PopNextReadyThread(Core* core) {
     ThreadState* next;
     ThreadState* state = core->current_thread_state;
 
-    if (state && state->IsRunning()) {
+    if (state && THREADSTATUS_RUNNING == state->status) {
         next = core->thread_ready_queue.pop_first_better(state->current_priority);
     } else  {
         next = core->thread_ready_queue.pop_first();
@@ -364,13 +371,24 @@ void PriorityScheduler::ThreadWakeupCallback(u64 parameter, int cycles_late) {
         LOG_ERROR(Kernel, "Thread doesn't exist %u", handle);
         return;
     }
+
+    // Set results on thread if a wait syncronization timed out
+    ThreadState* state = &thread_data[thread.get()];
+
+    if (THREADSTATUS_WAIT_SYNC == state->status) {
+        thread->SetWaitSynchronizationResult(ResultCode(ErrorDescription::Timeout, ErrorModule::OS,
+            ErrorSummary::StatusChanged, ErrorLevel::Info));
+
+        if (state->wait_set_output)
+            thread->SetWaitSynchronizationOutput(-1);
+    }
     
     ResumeFromWait(thread.get());
 }
 
 /// Check if a thread is waiting on a the specified wait object
 bool PriorityScheduler::CheckWait_WaitObject(const ThreadState* state, WaitObject* wait_object) {
-    if (!state->IsWaiting()) return false;
+    if (THREADSTATUS_WAIT_SYNC != state->status) return false;
 
     auto itr = std::find(state->wait_objects.begin(), state->wait_objects.end(), wait_object);
     return itr != state->wait_objects.end();
@@ -378,8 +396,7 @@ bool PriorityScheduler::CheckWait_WaitObject(const ThreadState* state, WaitObjec
 
 /// Check if the specified thread is waiting on the specified address to be arbitrated
 bool PriorityScheduler::CheckWait_AddressArbiter(const ThreadState* state, VAddr wait_address) {
-    // TODO(peachum): probably reintroduce wait_type
-    return state->IsWaiting() && state->wait_objects.empty() && wait_address == state->wait_address;
+    return THREADSTATUS_WAIT_ARB == state->status && wait_address == state->wait_address;
 }
     
 }

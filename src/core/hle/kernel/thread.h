@@ -15,39 +15,11 @@
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/result.h"
 
-enum ThreadPriority {
-    THREADPRIO_HIGHEST      = 0,    ///< Highest thread priority
-    THREADPRIO_DEFAULT      = 16,   ///< Default thread priority for userland apps
-    THREADPRIO_LOW          = 31,   ///< Low range of thread priority for userland apps
-    THREADPRIO_LOWEST       = 63,   ///< Thread priority max checked by svcCreateThread
-};
 
 enum ThreadProcessorId {
     THREADPROCESSORID_0     = 0xFFFFFFFE,   ///< Enables core appcode
     THREADPROCESSORID_1     = 0xFFFFFFFD,   ///< Enables core syscore
     THREADPROCESSORID_ALL   = 0xFFFFFFFC,   ///< Enables both cores
-};
-
-enum ThreadStatus {
-    THREADSTATUS_RUNNING        = 1,
-    THREADSTATUS_READY          = 2,
-    THREADSTATUS_WAIT           = 4,
-    THREADSTATUS_SUSPEND        = 8, //TODO(peachum): remove
-    THREADSTATUS_DORMANT        = 16,
-    THREADSTATUS_DEAD           = 32,
-    THREADSTATUS_WAITSUSPEND    = THREADSTATUS_WAIT | THREADSTATUS_SUSPEND
-};
-
-enum WaitType {
-    WAITTYPE_NONE,
-    WAITTYPE_SLEEP,
-    WAITTYPE_SEMA,
-    WAITTYPE_EVENT,
-    WAITTYPE_THREADEND,
-    WAITTYPE_MUTEX,
-    WAITTYPE_SYNCH,
-    WAITTYPE_ARB,
-    WAITTYPE_TIMER,
 };
 
 namespace Kernel {
@@ -67,10 +39,16 @@ public:
     void Acquire() override;
 
     /**
-     * Release an acquired wait object
-     * @param wait_object WaitObject to release
-     */
-    void ReleaseWaitObject(WaitObject* wait_object);
+      * Sets the result after the thread awakens (from either WaitSynchronization SVC)
+      * @param result Value to set to the returned result
+      */
+    void SetWaitSynchronizationResult(ResultCode result);
+
+    /**
+      * Sets the output parameter value after the thread awakens (from WaitSynchronizationN SVC only)
+      * @param output Value to set to the output parameter
+      */
+    void SetWaitSynchronizationOutput(s32 output);
 
     Core::ThreadContext context;
 

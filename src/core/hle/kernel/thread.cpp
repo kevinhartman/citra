@@ -23,6 +23,14 @@
 
 namespace Kernel {
 
+void Thread::SetWaitSynchronizationResult(ResultCode result) {
+    context.cpu_registers[0] = result.raw;
+}
+
+void Thread::SetWaitSynchronizationOutput(s32 output) {
+    context.cpu_registers[1] = output;
+}
+
 bool Thread::ShouldWait() {
     return status != THREADSTATUS_DORMANT;
 }
