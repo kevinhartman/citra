@@ -19,10 +19,11 @@ public:
 
     Thread* GetCurrentThread();
     void ScheduleThread(Thread* thread, s32 priority);
-    void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,
-        bool wait_set_output, bool wait_all);
     void WaitCurrentThread_Sleep();
     void WaitCurrentThread_ArbitrateAddress(VAddr wait_address);
+    void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,
+        bool wait_set_output, bool wait_all);
+    void ReleaseWaitObject(Thread* thread, WaitObject* wait_object);
     void ResumeFromWait(Thread* thread);
     void WakeThreadAfterDelay(Thread* thread, s64 nanoseconds);
     void SetPriority(Thread* thread, s32 priority);

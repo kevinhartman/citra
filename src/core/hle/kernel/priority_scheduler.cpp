@@ -75,6 +75,13 @@ void PriorityScheduler::WaitCurrentThread_Sleep() {
     Reschedule(state->core);
 }
 
+void PriorityScheduler::WaitCurrentThread_ArbitrateAddress(VAddr wait_address) {
+    ThreadState* state = GetCurrentThreadState();
+    state->wait_address = wait_address;
+    MakeNotReady(state, THREADSTATUS_WAIT_ARB);
+    Reschedule(state->core);
+}
+
 void PriorityScheduler::WaitCurrentThread_WaitSynchronization(
     std::vector<SharedPtr<WaitObject>> wait_objects, bool wait_set_output, bool wait_all) {
 
@@ -87,11 +94,51 @@ void PriorityScheduler::WaitCurrentThread_WaitSynchronization(
     Reschedule(state->core);
 }
 
-void PriorityScheduler::WaitCurrentThread_ArbitrateAddress(VAddr wait_address) {
-    ThreadState* state = GetCurrentThreadState();
-    state->wait_address = wait_address;
-    MakeNotReady(state, THREADSTATUS_WAIT_ARB);
-    Reschedule(state->core);
+void PriorityScheduler::ReleaseWaitObject(Thread* thread, WaitObject* wait_object) {
+    _dbg_assert_(Kernel, thread);
+    _dbg_assert_(Kernel, thread_data.find(thread) != thread_data.end());
+
+    ThreadState* state = &thread_data[thread];
+
+    if (THREADSTATUS_WAIT_SYNC != state->status || state->wait_objects.empty()) {
+        LOG_CRITICAL(Kernel, "thread is not waiting on any objects!");
+        return;
+    }
+
+    // Remove this thread from the waiting object's thread list
+    wait_object->RemoveWaitingThread(thread);
+
+    unsigned index = 0;
+    bool wait_all_failed = false; // Will be set to true if any object is unavailable
+
+    // Iterate through all waiting objects to check availability...
+    for (auto itr = state->wait_objects.begin(); itr != state->wait_objects.end(); ++itr) {
+        if ((*itr)->ShouldWait())
+            wait_all_failed = true;
+
+        // The output should be the last index of wait_object
+        if (*itr == wait_object)
+            index = itr - state->wait_objects.begin();
+    }
+
+    // If we are waiting on all objects...
+    if (state->wait_all) {
+        // Resume the thread only if all are available...
+        if (!wait_all_failed) {
+            thread->SetWaitSynchronizationResult(RESULT_SUCCESS);
+            thread->SetWaitSynchronizationOutput(-1);
+
+            ResumeFromWait(thread);
+        }
+    } else {
+        // Otherwise, resume
+        thread->SetWaitSynchronizationResult(RESULT_SUCCESS);
+        
+        if (state->wait_set_output)
+            thread->SetWaitSynchronizationOutput(index);
+        
+        ResumeFromWait(thread);
+    }
 }
 
 /// Resumes a thread from waiting by marking it as "ready"
@@ -103,6 +150,10 @@ void PriorityScheduler::ResumeFromWait(Thread* thread) {
     CoreTiming::UnscheduleEvent(thread_wakeup_event_id, thread->GetHandle());
 
     ThreadState* state = &thread_data[thread];
+    state->wait_objects.clear();
+    state->wait_set_output = false;
+    state->wait_all = false;
+    state->wait_address = 0;
 
     switch (state->status) {
         case THREADSTATUS_WAIT_SYNC:
@@ -168,7 +219,7 @@ void PriorityScheduler::ExitCurrentThread() {
     ThreadState* state = GetCurrentThreadState();
 
     // Release all the mutexes that this thread holds
-    ReleaseThreadMutexes(current_thread->GetHandle());
+    ReleaseThreadMutexes(current_thread);
 
     // Cancel any outstanding wakeup events for this thread
     CoreTiming::UnscheduleEvent(thread_wakeup_event_id, current_thread->GetHandle());

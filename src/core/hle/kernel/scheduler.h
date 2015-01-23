@@ -30,10 +30,11 @@ public:
 
     virtual Thread* GetCurrentThread() = 0;
     virtual void ScheduleThread(Thread* thread, s32 priority) = 0;
-    virtual void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,
-        bool wait_set_output, bool wait_all) = 0;
     virtual void WaitCurrentThread_Sleep() = 0;
     virtual void WaitCurrentThread_ArbitrateAddress(VAddr wait_address) = 0;
+    virtual void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,
+        bool wait_set_output, bool wait_all) = 0;
+    virtual void ReleaseWaitObject(Thread* thread, WaitObject* wait_object) = 0;
     virtual void ResumeFromWait(Thread* thread) = 0;
     virtual void WakeThreadAfterDelay(Thread* thread, s64 nanoseconds) = 0;
     virtual void SetPriority(Thread* thread, s32 priority) = 0;
@@ -41,7 +42,7 @@ public:
 
     virtual Thread* ArbitrateHighestPriorityThread(u32 address) = 0;
     virtual void ArbitrateAllThreads(u32 address) = 0;
-    
+
     /**
      * Release an acquired wait object
      * @param wait_object WaitObject to release
