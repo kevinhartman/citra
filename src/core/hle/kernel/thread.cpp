@@ -32,7 +32,7 @@ void Thread::SetWaitSynchronizationOutput(s32 output) {
 }
 
 bool Thread::ShouldWait() {
-    return status != THREADSTATUS_DORMANT;
+    return Core::scheduler->IsScheduled(this);
 }
 
 void Thread::Acquire() {

@@ -18,6 +18,10 @@ PriorityScheduler::ThreadState* PriorityScheduler::GetCurrentThreadState() {
     return cores[current_core_id].current_thread_state;
 }
 
+bool PriorityScheduler::IsScheduled(Thread* thread) {
+    return thread_data.find(thread) != thread_data.end();
+}
+
 void PriorityScheduler::ClampPriority(const Thread* thread, s32* priority) {
     if (*priority < THREADPRIO_HIGHEST || *priority > THREADPRIO_LOWEST) {
         s32 new_priority = CLAMP(*priority, THREADPRIO_HIGHEST, THREADPRIO_LOWEST);

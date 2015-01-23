@@ -22,6 +22,13 @@ enum ThreadProcessorId {
     THREADPROCESSORID_ALL   = 0xFFFFFFFC,   ///< Enables both cores
 };
 
+enum ThreadPriority {
+    THREADPRIO_HIGHEST      = 0,    ///< Highest thread priority
+    THREADPRIO_DEFAULT      = 16,   ///< Default thread priority for userland apps
+    THREADPRIO_LOW          = 31,   ///< Low range of thread priority for userland apps
+    THREADPRIO_LOWEST       = 63,   ///< Thread priority max checked by svcCreateThread
+};
+
 namespace Kernel {
 
 class Thread : public WaitObject {

@@ -117,7 +117,7 @@ bool HandleTable::IsValid(Handle handle) const {
 
 SharedPtr<Object> HandleTable::GetGeneric(Handle handle) const {
     if (handle == CurrentThread) {
-        return Core::Scheduler->GetCurrentThread();
+        return Core::scheduler->GetCurrentThread();
     } else if (handle == CurrentProcess) {
         LOG_ERROR(Kernel, "Current process (%08X) pseudo-handle not supported", CurrentProcess);
         return nullptr;

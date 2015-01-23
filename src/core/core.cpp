@@ -26,7 +26,7 @@ ARM_Interface*     g_sys_core = nullptr;  ///< ARM11 system (OS) core
 /// Run the core CPU loop
 void RunLoop(int tight_loop) {
 
-    Core::Scheduler = Kernel::PriorityScheduler::Get();
+    Core::scheduler = new Kernel::PriorityScheduler();
 
     // If the current thread is an idle thread, then don't execute instructions,
     // instead advance to the next event and try to yield to the next thread

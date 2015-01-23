@@ -11,6 +11,8 @@ namespace Kernel {
 class PriorityScheduler : public Scheduler {
 
 public:
+    PriorityScheduler() = default;
+    
     void Init();
     void RegisterCore(ThreadProcessorId id, ARM_Interface* core, SchedulingBehavior scheduling_behavior);
     void Shutdown();
@@ -19,6 +21,8 @@ public:
 
     Thread* GetCurrentThread();
     void ScheduleThread(Thread* thread, s32 priority);
+    bool IsScheduled(Thread* thread);
+
     void WaitCurrentThread_Sleep();
     void WaitCurrentThread_ArbitrateAddress(VAddr wait_address);
     void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,
@@ -35,13 +39,6 @@ public:
 
 protected:
     struct Core;
-
-    enum ThreadPriority {
-        THREADPRIO_HIGHEST      = 0,    ///< Highest thread priority
-        THREADPRIO_DEFAULT      = 16,   ///< Default thread priority for userland apps
-        THREADPRIO_LOW          = 31,   ///< Low range of thread priority for userland apps
-        THREADPRIO_LOWEST       = 63,   ///< Thread priority max checked by svcCreateThread
-    };
 
     enum ThreadStatus {
         THREADSTATUS_RUNNING,

@@ -30,6 +30,7 @@ public:
 
     virtual Thread* GetCurrentThread() = 0;
     virtual void ScheduleThread(Thread* thread, s32 priority) = 0;
+    virtual bool IsScheduled(Thread* thread) = 0;
     virtual void WaitCurrentThread_Sleep() = 0;
     virtual void WaitCurrentThread_ArbitrateAddress(VAddr wait_address) = 0;
     virtual void WaitCurrentThread_WaitSynchronization(std::vector<SharedPtr<WaitObject>> wait_objects,

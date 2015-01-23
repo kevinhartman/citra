@@ -39,7 +39,7 @@ struct ThreadContext {
 extern ARM_Interface*   g_app_core;     ///< ARM11 application core
 extern ARM_Interface*   g_sys_core;     ///< ARM11 system (OS) core
 
-extern Kernel::Scheduler* Scheduler;
+extern Kernel::Scheduler* scheduler;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
