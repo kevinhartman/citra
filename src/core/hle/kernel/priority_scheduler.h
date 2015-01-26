@@ -12,7 +12,7 @@ class PriorityScheduler : public Scheduler {
 
 public:
     PriorityScheduler() = default;
-    
+
     void Init();
     void RegisterCore(ThreadProcessorId id, ARM_Interface* core, SchedulingBehavior scheduling_behavior);
     void Shutdown();
@@ -31,7 +31,9 @@ public:
     void ResumeFromWait(Thread* thread);
     void WakeThreadAfterDelay(Thread* thread, s64 nanoseconds);
     void SetPriority(Thread* thread, s32 priority);
+    u32 GetPriority(Thread* thread);
     void ExitCurrentThread();
+    void Reschedule();
 
     Thread* ArbitrateHighestPriorityThread(u32 address);
     void ArbitrateAllThreads(u32 address);
@@ -51,10 +53,9 @@ protected:
     };
 
     struct ThreadState {
-        u32 thread_id; // TODO(peachum): should this be on Thread?
         Core* core; // The scheduler core that this thread was last used on
 
-        u32 status;
+        ThreadStatus status;
         s32 initial_priority; // for debugging only
         s32 current_priority;
 
@@ -75,7 +76,16 @@ protected:
         Thread* current_thread;
         ThreadState* current_thread_state;
 
+        /**
+         * This is a thread that is intended to never execute instructions,
+         * only to advance the timing. It is scheduled when there are no other ready threads in the thread queue
+         * and, for now, must
+         * @returns The handle of the idle thread
+         */
+        SharedPtr<Thread> idle_thread;
+
         virtual void Update(PriorityScheduler* scheduler);
+        virtual void AddThread(Thread* thread);
     };
 
     struct ApplicationCore : Core {
@@ -101,6 +111,7 @@ protected:
     void SwitchContext(Core* core, Thread* thread);
     void Reschedule(Core* core);
     void ThreadWakeupCallback(u64 parameter, int cycles_late);
+    void SetIdleThread(Core* core);
 
 private:
     PriorityScheduler(PriorityScheduler const&);

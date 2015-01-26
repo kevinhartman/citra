@@ -26,23 +26,21 @@ ARM_Interface*     g_sys_core = nullptr;  ///< ARM11 system (OS) core
 /// Run the core CPU loop
 void RunLoop(int tight_loop) {
 
-    Core::scheduler = new Kernel::PriorityScheduler();
+    scheduler->SetCurrentCore(THREADPROCESSORID_0);
 
     // If the current thread is an idle thread, then don't execute instructions,
     // instead advance to the next event and try to yield to the next thread
-    if (Kernel::GetCurrentThread()->IsIdle()) {
+    if (scheduler->GetCurrentThread()->IsIdle()) {
         LOG_TRACE(Core_ARM11, "Idling");
         CoreTiming::Idle();
         CoreTiming::Advance();
-        HLE::Reschedule(__func__);
+        scheduler->Reschedule();
     } else {
         g_app_core->Run(tight_loop);
     }
 
+    Core::scheduler->Update();
     HW::Update();
-    if (HLE::g_reschedule) {
-        Kernel::Reschedule();
-    }
 }
 
 /// Step the CPU one instruction
@@ -75,6 +73,10 @@ int Init() {
             g_app_core = new ARM_Interpreter();
             break;
     }
+
+    scheduler = new Kernel::PriorityScheduler();
+    scheduler->RegisterCore(THREADPROCESSORID_0, g_app_core, Kernel::SchedulingBehavior::APPLICATION_CORE);
+    //scheduler->RegisterCore(THREADPROCESSORID_1, g_sys_core, Kernel::SchedulingBehavior::SYSTEM_CORE);
 
     return 0;
 }

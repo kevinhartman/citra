@@ -109,6 +109,17 @@ ResultVal<SharedPtr<Thread>> Thread::Create(std::string name, VAddr entry_point,
     return MakeResult<SharedPtr<Thread>>(std::move(thread));
 }
 
+ResultVal<SharedPtr<Thread>> Thread::CreateIdleThread() {
+    SharedPtr<Thread> thread(new Thread);
+    thread->idle = true;
+
+    ResultVal<Handle> handle = Kernel::g_handle_table.Create(thread);
+    if (handle.Failed())
+        return handle.Code();
+
+    return MakeResult<SharedPtr<Thread>>(std::move(thread));
+}
+
 Handle SetupIdleThread() {
     // We need to pass a few valid values to get around parameter checking in Thread::Create.
     auto thread_res = Thread::Create("idle", Memory::KERNEL_MEMORY_VADDR, THREADPRIO_LOWEST, 0,

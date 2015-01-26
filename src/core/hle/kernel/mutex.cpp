@@ -10,6 +10,7 @@
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/mutex.h"
 #include "core/hle/kernel/thread.h"
+#include "core/hle/kernel/scheduler.h"
 
 namespace Kernel {
 
@@ -124,7 +125,7 @@ Mutex* CreateMutex(Handle& handle, bool initial_locked, const std::string& name)
 
     // Acquire mutex with current thread if initialized as locked...
     if (mutex->locked)
-        MutexAcquireLock(mutex, GetCurrentThread());
+        MutexAcquireLock(mutex, Core::scheduler->GetCurrentThread());
 
     return mutex;
 }
@@ -142,13 +143,13 @@ Handle CreateMutex(bool initial_locked, const std::string& name) {
 }
 
 bool Mutex::ShouldWait() {
-    return locked && holding_thread != GetCurrentThread();
+    return locked && holding_thread != Core::scheduler->GetCurrentThread();
 }
 
 void Mutex::Acquire() {
     _assert_msg_(Kernel, !ShouldWait(), "object unavailable!");
     locked = true;
-    MutexAcquireLock(this, GetCurrentThread());
+    MutexAcquireLock(this, Core::scheduler->GetCurrentThread());
 }
 
 } // namespace

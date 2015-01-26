@@ -39,7 +39,7 @@ void PriorityScheduler::ScheduleThread(Thread* thread, s32 priority) {
     ClampPriority(thread, &priority);
 
     // Thread should not pre-exist in scheduler
-    _dbg_assert_(Kernel, thread_data.find(thread) == thread_data.end());
+    _dbg_assert_(Kernel, !IsScheduled(thread));
 
     Core* core = nullptr;
     core = &cores[ThreadProcessorId::THREADPROCESSORID_0];
@@ -54,12 +54,13 @@ void PriorityScheduler::ScheduleThread(Thread* thread, s32 priority) {
         core_mask = core_mask << 1;
     }
 
+    thread->thread_id = NewThreadId();
+
     thread_list.push_back(thread);
     core->thread_ready_queue.prepare(priority);
 
     ThreadState* state = &thread_data[thread];
     state->thread = thread;
-    state->thread_id = NewThreadId();
     state->core = core;
     state->initial_priority = state->current_priority = priority;
     state->status = THREADSTATUS_DORMANT;
@@ -100,7 +101,7 @@ void PriorityScheduler::WaitCurrentThread_WaitSynchronization(
 
 void PriorityScheduler::ReleaseWaitObject(Thread* thread, WaitObject* wait_object) {
     _dbg_assert_(Kernel, thread);
-    _dbg_assert_(Kernel, thread_data.find(thread) != thread_data.end());
+    _dbg_assert_(Kernel, IsScheduled(thread));
 
     ThreadState* state = &thread_data[thread];
 
@@ -148,7 +149,7 @@ void PriorityScheduler::ReleaseWaitObject(Thread* thread, WaitObject* wait_objec
 /// Resumes a thread from waiting by marking it as "ready"
 void PriorityScheduler::ResumeFromWait(Thread* thread) {
     _dbg_assert_(Kernel, thread);
-    _dbg_assert_(Kernel, thread_data.find(thread) != thread_data.end());
+    _dbg_assert_(Kernel, IsScheduled(thread));
 
     // Cancel any outstanding wakeup events for this thread
     CoreTiming::UnscheduleEvent(thread_wakeup_event_id, thread->GetHandle());
@@ -197,7 +198,7 @@ void PriorityScheduler::WakeThreadAfterDelay(Thread* thread, s64 nanoseconds) {
 /// Set the priority of the thread specified by handle
 void PriorityScheduler::SetPriority(Thread* thread, s32 priority) {
     _dbg_assert_(Kernel, thread);
-    _dbg_assert_(Kernel, thread_data.find(thread) != thread_data.end());
+    _dbg_assert_(Kernel, IsScheduled(thread));
 
     ClampPriority(thread, &priority);
 
@@ -215,6 +216,14 @@ void PriorityScheduler::SetPriority(Thread* thread, s32 priority) {
     }
 
     state->current_priority = priority;
+}
+
+/// Gets the priority of the thread specified by handle
+u32 PriorityScheduler::GetPriority(Thread* thread) {
+    _dbg_assert_(Kernel, thread);
+    _dbg_assert_(Kernel, IsScheduled(thread));
+
+    return thread_data[thread].current_priority;
 }
 
 /// Stops the current thread
@@ -275,8 +284,12 @@ void PriorityScheduler::ArbitrateAllThreads(u32 address) {
     }
 }
 
+void PriorityScheduler::Reschedule() {
+    Reschedule(&cores[current_core_id]);
+}
+
 /// Changes a threads state
-void PriorityScheduler::MakeReady(ThreadState* state) { // TODO(peachum): pass core here?
+void PriorityScheduler::MakeReady(ThreadState* state) { // TODO(peachum): pass core here? --> this should be instance method on Core
     Core* core = state->core;
 
     // TODO(peachum): why is the current thread moved to front instead of back like everyone else?
@@ -317,7 +330,7 @@ void PriorityScheduler::SwitchContext(Core* core, Thread* thread) {
         core->current_thread_state = state;
 
         MakeNotReady(state, THREADSTATUS_RUNNING);
-        state->core = core; // TODO(peachum): do we need core on state?
+        state->core = core;
 
         core->arm_core->LoadContext(thread->context);
 
@@ -384,10 +397,23 @@ void PriorityScheduler::CoreUpdate(SystemCore* core/*, system ticks */) {
 
 }
 
+void PriorityScheduler::Core::AddThread(Thread* thread) {
+
+}
+
 void PriorityScheduler::Update(/* system ticks */) {
     for (Core& core : cores) {
         core.Update(this);
     }
+}
+
+void PriorityScheduler::SetIdleThread(PriorityScheduler::Core *core) {
+    // Set up an idle thread for this core
+    ResultVal<SharedPtr<Thread>> idle_thread = Thread::CreateIdleThread();
+
+    core->idle_thread = std::move(*idle_thread);
+
+
 }
 
 void PriorityScheduler::RegisterCore(ThreadProcessorId id, ARM_Interface* arm_core, SchedulingBehavior scheduling_behavior) {
@@ -407,6 +433,7 @@ void PriorityScheduler::RegisterCore(ThreadProcessorId id, ARM_Interface* arm_co
     }
 
     core->arm_core = arm_core;
+    SetIdleThread(core);
 }
 
 void PriorityScheduler::Init() {

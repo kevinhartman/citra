@@ -23,7 +23,8 @@ enum SchedulingBehavior {
 class Scheduler {
 public:
     virtual void Init() = 0;
-    virtual void RegisterCore(ThreadProcessorId id, ARM_Interface* core, SchedulingBehavior scheduling_behavior) = 0;
+    virtual ResultVal<void> RegisterCore(ThreadProcessorId id, ARM_Interface* core,
+        SchedulingBehavior scheduling_behavior) = 0;
     virtual void Shutdown() = 0;
     virtual void Update(/* system ticks */) = 0;
     virtual void SetCurrentCore(ThreadProcessorId id) = 0; // TODO: this is a hack
@@ -39,7 +40,9 @@ public:
     virtual void ResumeFromWait(Thread* thread) = 0;
     virtual void WakeThreadAfterDelay(Thread* thread, s64 nanoseconds) = 0;
     virtual void SetPriority(Thread* thread, s32 priority) = 0;
+    virtual u32 GetPriority(Thread* thread) = 0;
     virtual void ExitCurrentThread() = 0;
+    virtual void Reschedule() = 0;
 
     virtual Thread* ArbitrateHighestPriorityThread(u32 address) = 0;
     virtual void ArbitrateAllThreads(u32 address) = 0;

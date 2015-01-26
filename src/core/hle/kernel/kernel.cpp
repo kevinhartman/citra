@@ -38,7 +38,7 @@ Thread* WaitObject::WakeupNextThread() {
     auto next_thread = waiting_threads.front();
     waiting_threads.erase(waiting_threads.begin());
 
-    next_thread->ReleaseWaitObject(this);
+    Core::scheduler->ReleaseWaitObject(next_thread, this);
 
     return next_thread;
 }
@@ -49,7 +49,7 @@ void WaitObject::WakeupAllWaitingThreads() {
     // We use a copy because ReleaseWaitObject will remove the thread from this object's
     // waiting_threads list
     for (auto thread : waiting_threads_copy)
-        thread->ReleaseWaitObject(this);
+        Core::scheduler->ReleaseWaitObject(thread, this);
 
     _assert_msg_(Kernel, waiting_threads.empty(), "failed to awaken all waiting threads!");
 }
@@ -160,8 +160,6 @@ bool LoadExec(u32 entry_point) {
 
     // 0x30 is the typical main thread priority I've seen used so far
     g_main_thread = Kernel::SetupMainThread(0x30, Kernel::DEFAULT_STACK_SIZE);
-    // Setup the idle thread
-    Kernel::SetupIdleThread();
 
     return true;
 }

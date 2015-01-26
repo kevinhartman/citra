@@ -36,6 +36,8 @@ public:
     static ResultVal<SharedPtr<Thread>> Create(std::string name, VAddr entry_point,
         u32 arg, s32 processor_id, VAddr stack_top, u32 stack_size);
 
+    static ResultVal<SharedPtr<Thread>> CreateIdleThread();
+
     std::string GetName() const override { return name; }
     std::string GetTypeName() const override { return "Thread"; }
 
@@ -60,30 +62,24 @@ public:
     Core::ThreadContext context;
 
     // Supplied by user on construction
+    u32 thread_id;
     u32 entry_point;
     u32 stack_top;
     u32 stack_size;
     s32 processor_id;
+    bool IsIdle() { return idle; }
 
     std::string name;
 
-    /// Whether this thread is intended to never actually be executed, i.e. always idle
-    bool idle = false; // TODO(peachum): move this if needed
-
 private:
     Thread() = default;
+
+    /// Whether this thread is intended to never actually be executed, i.e. always idle
+    bool idle = false;
 };
 
 /// Sets up the primary application thread
 SharedPtr<Thread> SetupMainThread(s32 priority, u32 stack_size);
-
-/**
- * Sets up the idle thread, this is a thread that is intended to never execute instructions,
- * only to advance the timing. It is scheduled when there are no other ready threads in the thread queue
- * and will try to yield on every call.
- * @returns The handle of the idle thread
- */
-Handle SetupIdleThread();
 
 /// Initialize threading
 void ThreadingInit();

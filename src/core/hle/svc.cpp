@@ -17,6 +17,7 @@
 #include "core/hle/kernel/shared_memory.h"
 #include "core/hle/kernel/thread.h"
 #include "core/hle/kernel/timer.h"
+#include "core/hle/kernel/scheduler.h"
 
 #include "core/hle/function_wrappers.h"
 #include "core/hle/result.h"
@@ -128,13 +129,11 @@ static Result WaitSynchronization1(Handle handle, s64 nano_seconds) {
     // Check for next thread to schedule
     if (object->ShouldWait()) {
 
-        object->AddWaitingThread(Kernel::GetCurrentThread());
-        Kernel::WaitCurrentThread_WaitSynchronization(object, false, false);
+        object->AddWaitingThread(Core::scheduler->GetCurrentThread());
+        Core::scheduler->WaitCurrentThread_WaitSynchronization({ object }, false, false);
 
         // Create an event to wake the thread up after the specified nanosecond delay has passed
-        Kernel::WakeThreadAfterDelay(Kernel::GetCurrentThread(), nano_seconds);
-
-        HLE::Reschedule(__func__);
+        Core::scheduler->WakeThreadAfterDelay(Core::scheduler->GetCurrentThread(), nano_seconds);
 
         // NOTE: output of this SVC will be set later depending on how the thread resumes
         return RESULT_INVALID.raw;
@@ -193,7 +192,7 @@ static Result WaitSynchronizationN(s32* out, Handle* handles, s32 handle_count, 
         // NOTE: This should deadlock the current thread if no timeout was specified
         if (!wait_all) {
             wait_thread = true;
-            Kernel::WaitCurrentThread_WaitSynchronization(nullptr, true, wait_all);
+            Core::scheduler->WaitCurrentThread_WaitSynchronization({ }, true, wait_all);
         }
     }
 
@@ -203,14 +202,12 @@ static Result WaitSynchronizationN(s32* out, Handle* handles, s32 handle_count, 
         // Actually wait the current thread on each object if we decided to wait...
         for (int i = 0; i < handle_count; ++i) {
             auto object = Kernel::g_handle_table.GetWaitObject(handles[i]);
-            object->AddWaitingThread(Kernel::GetCurrentThread());
-            Kernel::WaitCurrentThread_WaitSynchronization(object, true, wait_all);
+            object->AddWaitingThread(Core::scheduler->GetCurrentThread());
+            Core::scheduler->WaitCurrentThread_WaitSynchronization({ object }, true, wait_all);
         }
 
         // Create an event to wake the thread up after the specified nanosecond delay has passed
-        Kernel::WakeThreadAfterDelay(Kernel::GetCurrentThread(), nano_seconds);
-
-        HLE::Reschedule(__func__);
+        Core::scheduler->WakeThreadAfterDelay(Core::scheduler->GetCurrentThread(), nano_seconds);
 
         // NOTE: output of this SVC will be set later depending on how the thread resumes
         return RESULT_INVALID.raw;
@@ -290,22 +287,28 @@ static Result CreateThread(u32 priority, u32 entry_point, u32 arg, u32 stack_top
     }
 
     ResultVal<SharedPtr<Thread>> thread_res = Kernel::Thread::Create(
-            name, entry_point, priority, arg, processor_id, stack_top, Kernel::DEFAULT_STACK_SIZE);
+            name, entry_point, arg, processor_id, stack_top, Kernel::DEFAULT_STACK_SIZE);
     if (thread_res.Failed())
         return thread_res.Code().raw;
     SharedPtr<Thread> thread = std::move(*thread_res);
 
     // TODO(yuriks): Create new handle instead of using built-in
-    Core::g_app_core->SetReg(1, thread->GetHandle());
+    // Note: scheduling the thread will cause a context switch, and this result will be available
+    // to the caller of CreateThread next time it gets CPU time
+    Core::scheduler->GetCurrentThread()->context.cpu_registers[1] = thread->GetHandle();
+
+    Core::scheduler->ScheduleThread(thread.get(), priority);
 
     LOG_TRACE(Kernel_SVC, "called entrypoint=0x%08X (%s), arg=0x%08X, stacktop=0x%08X, "
         "threadpriority=0x%08X, processorid=0x%08X : created handle=0x%08X", entry_point,
         name.c_str(), arg, stack_top, priority, processor_id, thread->GetHandle());
 
+    //TODO(peachum): remove
     if (THREADPROCESSORID_1 == processor_id) {
         LOG_WARNING(Kernel_SVC,
             "thread designated for system CPU core (UNIMPLEMENTED) will be run with app core scheduling");
     }
+    //
 
     return 0;
 }
@@ -314,8 +317,7 @@ static Result CreateThread(u32 priority, u32 entry_point, u32 arg, u32 stack_top
 static void ExitThread() {
     LOG_TRACE(Kernel_SVC, "called, pc=0x%08X", Core::g_app_core->GetPC());
 
-    Kernel::GetCurrentThread()->Stop(__func__);
-    HLE::Reschedule(__func__);
+    Core::scheduler->ExitCurrentThread();
 }
 
 /// Gets the priority for the specified thread
@@ -324,7 +326,7 @@ static Result GetThreadPriority(s32* priority, Handle handle) {
     if (thread == nullptr)
         return InvalidHandle(ErrorModule::Kernel).raw;
 
-    *priority = thread->GetPriority();
+    *priority = Core::scheduler->GetPriority(thread.get());
     return RESULT_SUCCESS.raw;
 }
 
@@ -334,7 +336,8 @@ static Result SetThreadPriority(Handle handle, s32 priority) {
     if (thread == nullptr)
         return InvalidHandle(ErrorModule::Kernel).raw;
 
-    thread->SetPriority(priority);
+    Core::scheduler->SetPriority(thread.get(), priority);
+
     return RESULT_SUCCESS.raw;
 }
 
@@ -361,7 +364,7 @@ static Result GetThreadId(u32* thread_id, Handle handle) {
     if (thread == nullptr)
         return InvalidHandle(ErrorModule::Kernel).raw;
 
-    *thread_id = thread->GetThreadId();
+    *thread_id = thread->thread_id;
     return RESULT_SUCCESS.raw;
 }
 
@@ -407,8 +410,13 @@ static Result DuplicateHandle(Handle* out, Handle handle) {
 /// Signals an event
 static Result SignalEvent(Handle evt) {
     LOG_TRACE(Kernel_SVC, "called event=0x%08X", evt);
-    HLE::Reschedule(__func__);
-    return Kernel::SignalEvent(evt).raw;
+    ResultCode result = Kernel::SignalEvent(evt);
+
+    if (result.IsSuccess()) {
+        Core::scheduler->Reschedule();
+    }
+
+    return result.raw;
 }
 
 /// Clears an event
@@ -448,12 +456,10 @@ static void SleepThread(s64 nanoseconds) {
     LOG_TRACE(Kernel_SVC, "called nanoseconds=%lld", nanoseconds);
 
     // Sleep current thread and check for next thread to schedule
-    Kernel::WaitCurrentThread_Sleep();
+    Core::scheduler->WaitCurrentThread_Sleep();
 
     // Create an event to wake the thread up after the specified nanosecond delay has passed
-    Kernel::WakeThreadAfterDelay(Kernel::GetCurrentThread(), nanoseconds);
-
-    HLE::Reschedule(__func__);
+    Core::scheduler->WakeThreadAfterDelay(Core::scheduler->GetCurrentThread(), nanoseconds);
 }
 
 /// This returns the total CPU ticks elapsed since the CPU was powered-on
