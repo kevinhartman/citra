@@ -23,6 +23,7 @@
 #include "core/hle/service/cfg/cfg_s.h"
 #include "core/hle/service/cfg/cfg_u.h"
 #include "core/hle/service/csnd_snd.h"
+#include "core/hle/service/dlp_srvr.h"
 #include "core/hle/service/dsp_dsp.h"
 #include "core/hle/service/err_f.h"
 #include "core/hle/service/fs/fs_user.h"
@@ -92,6 +93,7 @@ void Init() {
     AddService(new CFG_S::Interface);
     AddService(new CFG_U::Interface);
     AddService(new CSND_SND::Interface);
+    AddService(new DLP_SRVR::Interface);
     AddService(new DSP_DSP::Interface);
     AddService(new FRD_A::Interface);
     AddService(new FRD_U::Interface);
