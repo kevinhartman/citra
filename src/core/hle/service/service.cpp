@@ -57,6 +57,8 @@ namespace Service {
 std::unordered_map<std::string, Kernel::SharedPtr<Interface>> g_kernel_named_ports;
 std::unordered_map<std::string, Kernel::SharedPtr<Interface>> g_srv_services;
 
+Interface g_stub_service;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Module interface
 

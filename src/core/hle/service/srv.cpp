@@ -42,8 +42,14 @@ static void GetServiceHandle(Service::Interface* self) {
         LOG_TRACE(Service_SRV, "called port=%s, handle=0x%08X", port_name.c_str(), cmd_buff[3]);
     } else {
         LOG_ERROR(Service_SRV, "(UNIMPLEMENTED) called port=%s", port_name.c_str());
-        res = UnimplementedFunction(ErrorModule::SRV);
+
+        // Note: developers should add the corresponding service interface implementation when this is hit
+        UNIMPLEMENTED();
+
+        // Return the stubbed (empty) service so that applications can continue
+        cmd_buff[3] = Kernel::g_handle_table.Create(&Service::g_stub_service).MoveFrom();
     }
+    
     cmd_buff[1] = res.raw;
 }
 
