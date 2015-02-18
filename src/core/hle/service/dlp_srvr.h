@@ -2,6 +2,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#pragma once
+
 #include "core/hle/service/service.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,12 +11,12 @@
 
 namespace DLP_SRVR {
 
-    /// Interface to "dlp:" service
-    class Interface : public Service::Interface {
-    public:
-        Interface();
+/// Interface to "dlp:" service
+class Interface : public Service::Interface {
+public:
+    Interface();
 
-        std::string GetPortName() const override {
+    std::string GetPortName() const override {
         return "dlp:SRVR";
     }
 };
