@@ -47,7 +47,7 @@ static void GetServiceHandle(Service::Interface* self) {
         UNIMPLEMENTED();
 
         // Return the stubbed (empty) service so that applications can continue
-        cmd_buff[3] = Kernel::g_handle_table.Create(&Service::g_stub_service).MoveFrom();
+        cmd_buff[3] = Kernel::g_handle_table.Create(Service::g_stub_service).MoveFrom();
     }
     
     cmd_buff[1] = res.raw;
