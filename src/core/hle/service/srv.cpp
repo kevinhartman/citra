@@ -41,10 +41,9 @@ static void GetServiceHandle(Service::Interface* self) {
         cmd_buff[3] = Kernel::g_handle_table.Create(it->second).MoveFrom();
         LOG_TRACE(Service_SRV, "called port=%s, handle=0x%08X", port_name.c_str(), cmd_buff[3]);
     } else {
-        LOG_ERROR(Service_SRV, "(UNIMPLEMENTED) called port=%s", port_name.c_str());
-
-        // Note: developers should add the corresponding service interface implementation when this is hit
-        UNIMPLEMENTED();
+        // Note: A corresponding service interface stub/implementation should be added when
+        //       unknown services are discovered and logged here.
+        LOG_CRITICAL(Service_SRV, "(UNIMPLEMENTED) called port=%s. Please add a corresponding interface.", port_name.c_str());
 
         // Return the stubbed (empty) service so that applications can continue
         cmd_buff[3] = Kernel::g_handle_table.Create(Service::g_stub_service).MoveFrom();
